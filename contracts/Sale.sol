@@ -40,8 +40,8 @@ contract Sale is Ownable, ReentrancyGuard {
     bool public isWhitelist;
     mapping(address => uint256) public contributions;
     mapping(address => bool) public claimed;
-
     mapping(address => bool) public whitelist;
+    bool public initialized;
 
     // Lock
     uint256 public lockPeriod;
@@ -89,12 +89,15 @@ contract Sale is Ownable, ReentrancyGuard {
         uint256 _maxPurchase,
         uint256 _lockPeriod
     ) external onlyOwner {
+        require(!initialized, "already initialized");
         require(_endTime >= block.timestamp, "Start time is before current time");
         require(_endTime > _startTime, "End time must be after start time");
         require(_liquidityPt >= 50 && _liquidityPt <= 100, "Liquidity pt must be between 50 and 100");
         require(_softCap <= _hardCap, "Soft cap shall equal or lower than hardcap");
         require(_minPurchase <= _maxPurchase, "Min purchase shall be less than max");
         require(_lockPeriod >= 3600, "Too short lock");
+
+        initialized = true;
 
         startTime = _startTime;
         endTime = _endTime;
