@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+import "./IReferral.sol";
+
+contract ReferralModule is Ownable, ReentrancyGuard {
+    modifier onlyParent() {
+        require(msg.sender == parent, "Sale: Caller is not whitelisted");
+        _;
+    }
+
+    // ref
+    IReferralContract referralContract;
+    address USDT;
+    address USDC;
+    address DAI;
+    uint256 public refshareBalance;
+    mapping(bytes => uint256) codeBalances;
+    bytes[] codesRegistered;
+    uint256 finalizedIndex;
+    bool public referralFinalized;
+
+    bool acceptsNativeToken;
+    address paymentToken;
+    address parent;
+
+    constructor(bool _acceptsNativeToken, address _paymentToken, address _USDT, address _USDC, address _DAI) Ownable(msg.sender) {
+        USDT = _USDT;
+        USDC = _USDC;
+        DAI = _DAI;
+        acceptsNativeToken = _acceptsNativeToken;
+        paymentToken = _paymentToken;
+    }
+
+    function init(address _parent) external onlyOwner {
+        parent = _parent;
+    }
+
+    function processReferralCode(string memory code, uint256 value) private {
+        if (acceptsNativeToken) {
+            referralContract.addRegisteredFunds(code, value, 0, 0, 0);
+        } else if (address(paymentToken) == USDT) {
+            referralContract.addRegisteredFunds(code, 0, value, 0, 0);
+        } else if (address(paymentToken) == USDC) {
+            referralContract.addRegisteredFunds(code, 0, 0, value, 0);
+        } else if (address(paymentToken) == DAI) {
+            referralContract.addRegisteredFunds(code, 0, 0, 0, value);
+        } else {
+            return;
+        }
+
+        if (codeBalances[bytes(code)] == 0) {
+            codesRegistered.push(bytes(code));
+            codeBalances[bytes(code)] += value;
+        }
+
+        refshareBalance += value;
+    }
+
+    function finalizeReferralCode(string memory code) private {
+        uint256 codeBalance = codeBalances[bytes(code)];
+
+        if (acceptsNativeToken) {
+            referralContract.unlockRegisteredFunds{value: codeBalance}(code);
+        } else if (address(paymentToken) == USDT || (address(paymentToken) == USDC) || (address(paymentToken) == DAI)) {
+            IERC20(paymentToken).transferFrom(parent, address(this), refshareBalance);
+            IERC20(paymentToken).approve(address(referralContract), refshareBalance);
+            referralContract.unlockRegisteredFunds(code);
+        } else {
+            return;
+        }
+    }
+
+    function finalizeReferralCodes(uint256 count) external payable onlyOwner nonReentrant {
+        if (count > codesRegistered.length - finalizedIndex) {
+            count = codesRegistered.length - finalizedIndex;
+        }
+
+        uint endIndex = finalizedIndex + count;
+        for (uint i = finalizedIndex; i < endIndex; i++) {
+            string memory code = string(codesRegistered[i]);
+            finalizeReferralCode(code);
+        }
+
+        finalizedIndex = endIndex;
+        if (finalizedIndex >= codesRegistered.length) {
+            referralFinalized = true;
+        }
+    }
+
+    function isFinalized() public view returns (bool) {
+        return referralFinalized;
+    }
+
+    function getRefshareBalance() public view returns (uint256) {
+        return refshareBalance;
+    }
+}

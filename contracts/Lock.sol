@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -29,19 +30,8 @@ contract BSCPancakeswapV2Locker {
     mapping(address => uint256[]) public ownerLocks;
     mapping(address => uint256[]) public tokenLocks;
 
-    event lpLocked(
-        address indexed tokenaddress,
-        uint256 amount,
-        uint256 unlocktime,
-        address indexed owner,
-        uint256 indexed locknumber
-    );
-    event lpWithdrawn(
-        address indexed tokenaddress,
-        uint256 amount,
-        address indexed owner,
-        uint256 indexed locknumber
-    );
+    event lpLocked(address indexed tokenaddress, uint256 amount, uint256 unlocktime, address indexed owner, uint256 indexed locknumber);
+    event lpWithdrawn(address indexed tokenaddress, uint256 amount, address indexed owner, uint256 indexed locknumber);
 
     function changeFee(uint256 newFee) external onlyOwner {
         require(50000 >= newFee);
@@ -52,21 +42,13 @@ contract BSCPancakeswapV2Locker {
         feeaddress = newaddress;
     }
 
-    function lockTokens(
-        address token,
-        uint256 amount,
-        uint256 locktime,
-        address _owner
-    ) external payable returns (uint256 _lockNumber) {
+    function lockTokens(address token, uint256 amount, uint256 locktime, address _owner) external payable returns (uint256 _lockNumber) {
         require(amount > 0, "cant lock 0 tokens");
         require(locktime > 3600, "too few time lock");
         require(msg.value >= fee, "you shall pay fee");
         feeaddress.transfer(msg.value);
 
-        require(
-            IERC20(token).allowance(msg.sender, address(this)) >= amount,
-            "approve spending"
-        );
+        require(IERC20(token).allowance(msg.sender, address(this)) >= amount, "approve spending");
 
         uint256 oldBalance = IERC20(token).balanceOf(address(this));
         IERC20(token).transferFrom(msg.sender, address(this), amount);
@@ -97,15 +79,7 @@ contract BSCPancakeswapV2Locker {
         require(locks[lockNumber].lockamount > 0);
         require(!locks[lockNumber].withdrawn);
         locks[lockNumber].withdrawn = true;
-        IERC20(locks[lockNumber].lpaddress).transfer(
-            msg.sender,
-            locks[lockNumber].lockamount
-        );
-        emit lpWithdrawn(
-            locks[lockNumber].lpaddress,
-            locks[lockNumber].lockamount,
-            locks[lockNumber].lockowner,
-            locks[lockNumber].lockid
-        );
+        IERC20(locks[lockNumber].lpaddress).transfer(msg.sender, locks[lockNumber].lockamount);
+        emit lpWithdrawn(locks[lockNumber].lpaddress, locks[lockNumber].lockamount, locks[lockNumber].lockowner, locks[lockNumber].lockid);
     }
 }

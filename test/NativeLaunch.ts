@@ -4,7 +4,9 @@ import { ethers } from "ethers";
 import { ERC20Token } from "../typechain-types/contracts/ERC20.sol";
 import { Sale } from "../typechain-types/contracts/Sale";
 import { SaleContractFactory } from "../typechain-types/contracts/Factory.sol";
+import { ReferralContract } from "../typechain-types";
 import { BSCPancakeswapV2Locker } from "../typechain-types";
+import { ReferralModule__factory } from "../typechain-types";
 
 import { params } from "../utils/common";
 
@@ -21,6 +23,8 @@ async function getBlockTime() {
 describe("Native Launch tests", async function () {
   let deployer: ethers.Signer, saler: ethers.Signer, depositor1: ethers.Signer, depositor2: ethers.Signer, depositor3: ethers.Signer;
   let sale: Sale, factory: SaleContractFactory, saleToken: ERC20Token, locker: BSCPancakeswapV2Locker;
+  let refContract: ReferralContract, moduleFactory: ReferralModule__factory, usdt: ERC20Token, usdc: ERC20Token, dai: ERC20Token;
+
   let ts: number;
 
   beforeEach(async function () {
@@ -31,14 +35,27 @@ describe("Native Launch tests", async function () {
 
     const saleTokenF = await hre.ethers.getContractFactory("ERC20Token", saler);
     saleToken = await saleTokenF.deploy("SALETOKEN");
+    usdt = await saleTokenF.deploy("USDT");
+    usdc = await saleTokenF.deploy("USDC");
+    dai = await saleTokenF.deploy("DAI");
+
+    const referralFactory = await hre.ethers.getContractFactory("ReferralContract")
+    refContract = await referralFactory.deploy(usdt.getAddress(), usdc.getAddress(), dai.getAddress(), 100, params.treasury);
+
+    moduleFactory = await hre.ethers.getContractFactory("ReferralModule");
+
 
     const launchF = await hre.ethers.getContractFactory("SaleContractFactory", deployer);
+    const typesArray = [
+      { type: 'address', name: 'messanger' },
+    ];
     factory = await launchF.deploy(locker.getAddress(), params.fee, params.raiseFee, params.treasury)
 
-    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), "0x0000000000000000000000000000000000000000", [], { value: params.fee });
-
-    const launchCount = await factory.totalLaunchesCount();
-    const saleAddress = await factory.launches(launchCount - 1n);
+    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), "0x0000000000000000000000000000000000000000", false, [], { value: params.fee });
+    const filter = factory.filters.SaleContractCreated;
+    const events = await factory.queryFilter(filter, -1)
+    const event = events[0]
+    const saleAddress = event.args[0];
 
     sale = await hre.ethers.getContractAt("Sale", saleAddress)
     saleToken.connect(saler).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
@@ -48,6 +65,9 @@ describe("Native Launch tests", async function () {
   it("Successfull native token sale happy path", async function () {
     const startTime = ts;
     const endTime = startTime + 3600;
+
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -60,14 +80,15 @@ describe("Native Launch tests", async function () {
       params.min,
       params.max,
       params.minLock,
+      refModule.getAddress()
     );
 
     assert(await sale.finished() == false, "Sale active after init");
 
-    await sale.connect(depositor1).buyTokensWithNative({ value: 2_000n });
-    await sale.connect(depositor2).buyTokensWithNative({ value: 4_000n });
-    await sale.connect(depositor3).buyTokensWithNative({ value: 2_000n });
-    await sale.connect(depositor1).buyTokensWithNative({ value: 4_000n });
+    await sale.connect(depositor1).buyTokensWithNative("", { value: 2_000n });
+    await sale.connect(depositor2).buyTokensWithNative("", { value: 4_000n });
+    await sale.connect(depositor3).buyTokensWithNative("", { value: 2_000n });
+    await sale.connect(depositor1).buyTokensWithNative("", { value: 4_000n });
 
     await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 3 hours forward
     await hre.ethers.provider.send("evm_mine");
@@ -105,6 +126,9 @@ describe("Native Launch tests", async function () {
     const startTime = ts;
     const endTime = startTime + 3600;
 
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
+
     await sale.connect(saler).initializeSale(
       startTime,
       endTime,
@@ -116,16 +140,17 @@ describe("Native Launch tests", async function () {
       params.min,
       params.max,
       params.minLock,
+      refModule.getAddress()
     );
 
     // Whitelist depositor1 and depositor2
     await sale.connect(saler).addToWhitelist([depositor1.getAddress(), depositor2.getAddress()]);
     await sale.connect(saler).setWhitelist(true);
-    await expect(sale.connect(depositor1).buyTokensWithNative({ value: 100 }))
+    await expect(sale.connect(depositor1).buyTokensWithNative("", { value: 100 }))
       .to.emit(sale, 'TokensPurchased')
       .withArgs(await depositor1.getAddress(), 100);
 
-    await expect(sale.connect(depositor2).buyTokensWithNative({ value: 100 }))
+    await expect(sale.connect(depositor2).buyTokensWithNative("", { value: 100 }))
       .to.emit(sale, 'TokensPurchased')
       .withArgs(await depositor2.getAddress(), 100);
   });
@@ -134,6 +159,9 @@ describe("Native Launch tests", async function () {
     const startTime = ts;
     const endTime = startTime + 3600;
 
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
+
     await sale.connect(saler).initializeSale(
       startTime,
       endTime,
@@ -145,12 +173,13 @@ describe("Native Launch tests", async function () {
       params.min,
       params.max,
       params.minLock,
+      refModule.getAddress()
     );
     // Whitelist depositor1 and depositor2, not depositor3
     await sale.connect(saler).addToWhitelist([depositor1.getAddress(), depositor2.getAddress()]);
     await sale.connect(saler).setWhitelist(true);
 
-    await expect(sale.connect(depositor3).buyTokensWithNative({ value: 100 }))
+    await expect(sale.connect(depositor3).buyTokensWithNative("", { value: 100 }))
       .to.be.revertedWith("Sale: Caller is not whitelisted");
   });
 
@@ -159,9 +188,12 @@ describe("Native Launch tests", async function () {
     const startTime = ts;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, 100, 100, 100, 2000, 10, 1000, 3600 * 24 * 30);
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
 
-    await expect(sale.connect(depositor1).buyTokensWithNative({
+    await sale.connect(saler).initializeSale(startTime, endTime, 50, 100, 100, 100, 2000, 10, 1000, 3600 * 24 * 30, refModule.getAddress());
+
+    await expect(sale.connect(depositor1).buyTokensWithNative("", {
       value: purchaseAmount,
     })).to.changeEtherBalances([depositor1, sale], [-purchaseAmount, purchaseAmount]);
 
@@ -173,11 +205,14 @@ describe("Native Launch tests", async function () {
     const startTime = ts;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, 100, 100, 10000, 200000, 10, 10000, 3600 * 24 * 30);
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
 
-    await sale.connect(depositor1).buyTokensWithNative({ value: 2_000n });
-    await sale.connect(depositor2).buyTokensWithNative({ value: 4_000n });
-    await sale.connect(depositor1).buyTokensWithNative({ value: 4_000n });
+    await sale.connect(saler).initializeSale(startTime, endTime, 50, 100, 100, 10000, 200000, 10, 10000, 3600 * 24 * 30, refModule.getAddress());
+
+    await sale.connect(depositor1).buyTokensWithNative("", { value: 2_000n });
+    await sale.connect(depositor2).buyTokensWithNative("", { value: 4_000n });
+    await sale.connect(depositor1).buyTokensWithNative("", { value: 4_000n });
 
     await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 3 hours forward
     await hre.ethers.provider.send("evm_mine");
@@ -198,29 +233,38 @@ describe("Native Launch tests", async function () {
 
     const minPurchase = hre.ethers.parseEther("0.01")
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, eth1, eth1, 500, 1000, minPurchase, minPurchase * 10n, 3600 * 24 * 30);
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
 
-    await expect(sale.connect(depositor1).buyTokensWithNative({
+    await sale.connect(saler).initializeSale(startTime, endTime, 50, eth1, eth1, 500, 1000, minPurchase, minPurchase * 10n, 3600 * 24 * 30, refModule.getAddress());
+
+    await expect(sale.connect(depositor1).buyTokensWithNative("", {
       value: hre.ethers.parseEther("0.001"),
-    })).to.be.revertedWith("Deposit limit reached");
+    })).to.be.revertedWithoutReason;
   });
 
   it("should not allow purchases after sale has ended", async function () {
-    await sale.connect(saler).initializeSale(ts - 3600, ts + 3600, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30);
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
+
+    await sale.connect(saler).initializeSale(ts - 3600, ts + 3600, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
     await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 2 hours forward
     await hre.ethers.provider.send("evm_mine");
 
 
-    await expect(sale.connect(depositor1).buyTokensWithNative({
+    await expect(sale.connect(depositor1).buyTokensWithNative("", {
       value: 10,
-    })).to.be.revertedWith("Sale is not active");
+    })).to.be.revertedWithoutReason;
   });
 
 
   it("should handle refunds correctly when the soft cap is not reached", async function () {
-    await sale.connect(saler).initializeSale(ts, ts + 7200, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30);
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
+
+    await sale.connect(saler).initializeSale(ts, ts + 7200, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
     const depositAmount = 100;
-    await sale.connect(depositor1).buyTokensWithNative({
+    await sale.connect(depositor1).buyTokensWithNative("", {
       value: depositAmount
     });
 
@@ -235,6 +279,8 @@ describe("Native Launch tests", async function () {
   it("should allow claiming of tokens after the sale is finalized", async function () {
     const startTime = ts;
     const endTime = startTime + 3600;
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
 
     const halfEth = hre.ethers.parseEther("0.5")
     const oneEth = hre.ethers.parseEther("1")
@@ -243,11 +289,11 @@ describe("Native Launch tests", async function () {
     const depositAmount = halfEth;
 
     // Setting up the sale and transferring tokens for distribution
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, price, 1200, halfEth, oneEth, halfEth, oneEth, 3600 * 24 * 30);
-    await sale.connect(depositor1).buyTokensWithNative({
+    await sale.connect(saler).initializeSale(startTime, endTime, 50, price, 1200, halfEth, oneEth, halfEth, oneEth, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(depositor1).buyTokensWithNative("", {
       value: depositAmount
     });
-    await sale.connect(depositor2).buyTokensWithNative({
+    await sale.connect(depositor2).buyTokensWithNative("", {
       value: depositAmount
     });
 
@@ -278,9 +324,10 @@ describe("Native Launch tests", async function () {
   it("should prevent unauthorized users from initializing the sale", async function () {
     const startTime = ts - 100;
     const endTime = startTime + 10;
-
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
     // Attempt to initialize the sale from a non-owner account
-    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, 50, 100, 200, 500, 1000, 10, 200, 3600 * 24 * 30)).to.be.revertedWithCustomError;
+    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, 50, 100, 200, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress())).to.be.revertedWithCustomError;
   });
 
 
@@ -289,18 +336,20 @@ describe("Native Launch tests", async function () {
     const endTime = startTime + 3600;
     const depositAmount = ethers.parseEther("500"); // close to hard cap
     const excessAmount = ethers.parseEther("100");
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, depositAmount, depositAmount, ethers.parseEther("10"), ethers.parseEther("500"), 3600 * 24 * 30);
+    await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, depositAmount, depositAmount, ethers.parseEther("10"), ethers.parseEther("500"), 3600 * 24 * 30, refModule.getAddress());
 
     // First, fill up close to the hard cap
-    await sale.connect(depositor1).buyTokensWithNative({
+    await sale.connect(depositor1).buyTokensWithNative("", {
       value: depositAmount
     });
 
     // Attempt to exceed hard cap
-    await expect(sale.connect(depositor3).buyTokensWithNative({
+    await expect(sale.connect(depositor3).buyTokensWithNative("", {
       value: excessAmount
-    })).to.be.revertedWith("Hardcap reached");
+    })).to.be.revertedWithoutReason;
   });
 
 
@@ -308,9 +357,11 @@ describe("Native Launch tests", async function () {
     const startTime = ts;
     const endTime = startTime + 3600;
     const depositAmount = hre.ethers.parseEther("100");
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, hre.ethers.parseEther("100"), hre.ethers.parseEther("200"), hre.ethers.parseEther("100"), hre.ethers.parseEther("200"), 3600 * 24 * 30);
-    await sale.connect(depositor1).buyTokensWithNative({
+    await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, hre.ethers.parseEther("100"), hre.ethers.parseEther("200"), hre.ethers.parseEther("100"), hre.ethers.parseEther("200"), 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(depositor1).buyTokensWithNative("", {
       value: depositAmount
     });
 
@@ -321,9 +372,11 @@ describe("Native Launch tests", async function () {
     const startTime = ts;
     const endTime = startTime + 3600;
     const depositAmount = hre.ethers.parseEther("1");
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    await refModule.init(sale);
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, hre.ethers.parseEther("2"), hre.ethers.parseEther("10"), hre.ethers.parseEther("1"), hre.ethers.parseEther("2"), 3600 * 24 * 30);
-    await sale.connect(depositor1).buyTokensWithNative({
+    await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, hre.ethers.parseEther("2"), hre.ethers.parseEther("10"), hre.ethers.parseEther("1"), hre.ethers.parseEther("2"), 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(depositor1).buyTokensWithNative("", {
       value: depositAmount
     });
 
