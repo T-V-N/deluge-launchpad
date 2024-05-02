@@ -4,10 +4,12 @@ import { config as dotenvConfig } from 'dotenv';
 import { resolve } from 'path';
 import 'hardhat-abi-exporter';
 import "@nomicfoundation/hardhat-ignition-ethers";
+import 'solidity-coverage'
 
 import '@typechain/hardhat'
 import '@nomicfoundation/hardhat-ethers'
 import '@nomicfoundation/hardhat-chai-matchers'
+import "hardhat-contract-sizer";
 
 const dotenvConfigPath: string = process.env.DOTENV_CONFIG_PATH || './.env';
 dotenvConfig({
@@ -18,6 +20,16 @@ const { DEPLOYER_PRIVATE_KEY, FORK_KEY, QUICKNODE_API } =
 
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
+  settings: {
+    optimizer: {
+      enabled: true,
+      runs: 1000,
+    },
+  },
+  gasReporter: {
+    currency: 'USD',
+    gasPrice: 21
+  },
   networks: {
     bscmainnet: {
       url: "https://bsc-dataseed.binance.org/",
