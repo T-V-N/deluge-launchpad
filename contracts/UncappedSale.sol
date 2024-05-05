@@ -4,8 +4,8 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./ILocker.sol";
-import "./IUniswap.sol";
+import "./interfaces/ILocker.sol";
+import "./interfaces/IUniswap.sol";
 import "hardhat/console.sol";
 
 contract UncappedSale is Ownable, ReentrancyGuard {

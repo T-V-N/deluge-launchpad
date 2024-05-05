@@ -5,9 +5,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./ILocker.sol";
-import "./IReferralModule.sol";
-import "./IUniswap.sol";
+import "./interfaces/ILocker.sol";
+import "./interfaces/IReferralModule.sol";
+import "./interfaces/IUniswap.sol";
 
 contract Sale is Ownable, ReentrancyGuard {
     modifier isWhitelisted() {
