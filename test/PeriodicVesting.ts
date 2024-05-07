@@ -2,8 +2,6 @@ import { assert, expect } from "chai";
 import hre from "hardhat";
 import { ethers } from "ethers";
 import { ERC20Token } from "../typechain-types/contracts/ERC20.sol";
-import { ReferralContract } from "../typechain-types";
-import { ReferralModule__factory } from "../typechain-types";
 import { VestingContractFactory } from "../typechain-types";
 import { PeriodicVesting } from "../typechain-types";
 import { customError } from "./utils/errors";
@@ -17,13 +15,13 @@ async function getBlockTime() {
 }
 
 describe("Periodic vesting", async function () {
-  let deployer: ethers.Signer, treasury: ethers.Signer, locker: ethers.Signer, user1: ethers.Signer, user2: ethers.Signer, user3: ethers.Signer;
+  let treasury: ethers.Signer, locker: ethers.Signer, user1: ethers.Signer, user2: ethers.Signer, user3: ethers.Signer;
   let vestingF: VestingContractFactory, vestedToken: ERC20Token, vesting: PeriodicVesting;
 
   let ts: bigint;
 
   beforeEach(async function () {
-    [deployer, treasury, locker, user1, user2, user3] = await hre.ethers.getSigners();
+    [, treasury, locker, user1, user2, user3] = await hre.ethers.getSigners();
 
     const vestedTokenF = await hre.ethers.getContractFactory("ERC20Token", locker);
     vestedToken = await vestedTokenF.deploy("VTKN");
@@ -46,7 +44,7 @@ describe("Periodic vesting", async function () {
     const event = events[0]
     const vestingAddress = event.args[0];
 
-    await vestedToken.connect(locker).transfer(vestingAddress, 1000n * BigInt(10 ** 18));
+    await vestedToken.connect(locker).approve(vestingAddress, 10000000000n * BigInt(10 ** 18));
 
     vesting = await hre.ethers.getContractAt("PeriodicVesting", vestingAddress);
 
@@ -348,34 +346,6 @@ describe("Periodic vesting", async function () {
     ).to.be.revertedWithCustomError(vesting, customError.nothingToClaim);
   });
 
-  it("should revert if the contract does not have sufficient funds", async function () {
-    await vestingF.connect(locker).createPeriodicVestingContract(
-      vestedToken.getAddress(),
-      ts + 600n, //start in a minute
-      0,
-      10n * BigInt(10 ** 18),
-      360,
-      15n * BigInt(10 ** 18),
-      { value: 1000 });
-
-    const filter = vestingF.filters.VestingContractCreated;
-    const events = await vestingF.queryFilter(filter, -1)
-    const event = events[0]
-    const vestingAddress = event.args[0];
-
-    const vesting = await hre.ethers.getContractAt("PeriodicVesting", vestingAddress);
-    const amount = 100n * BigInt(10 ** 18); // 100 tokens
-    await vesting.connect(locker).setAllocation(user1.getAddress(), amount);
-
-
-    await hre.ethers.provider.send("evm_increaseTime", [1200]); // 20 mins forward
-    await hre.ethers.provider.send("evm_mine");
-
-    await expect(
-      vesting.connect(user1).claim()
-    ).to.be.revertedWithCustomError(vesting, customError.contractMustHaveSufficientFunds);
-  });
-
   it("should allow users to claim their vested tokens", async function () {
     const amount = 1000n * BigInt(10 ** 18); // 1000 tokens
     await vesting.connect(locker).setAllocation(user1.getAddress(), amount);
@@ -511,7 +481,7 @@ describe("Periodic vesting", async function () {
     const event = events[0]
     const vestingAddress = event.args[0];
 
-    await vestedToken.connect(locker).transfer(vestingAddress, 1000n * BigInt(10 ** 18));
+    await vestedToken.connect(locker).approve(vestingAddress, 1000n * BigInt(10 ** 18));
 
     const cliffVesting = await hre.ethers.getContractAt("PeriodicVesting", vestingAddress);
     const amount = 1000n * BigInt(10 ** 18); // 1000 tokens

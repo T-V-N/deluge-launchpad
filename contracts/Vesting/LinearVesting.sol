@@ -78,8 +78,7 @@ contract LinearVesting is Ownable, ReentrancyGuard {
         uint256 amount = allocation.amount;
 
         if (block.timestamp > startDate) {
-            uint256 claimAmount = ((block.timestamp - startDate) * amount) / unlockPeriod;
-
+            uint256 claimAmount = ((block.timestamp - startDate) * amount) / unlockPeriod - claimed;
             if (claimAmount > amount - claimed) {
                 return amount - claimed;
             }
@@ -164,6 +163,8 @@ contract LinearVesting is Ownable, ReentrancyGuard {
             revert CantChangeOngoingVesting();
         }
 
+        erc20Token.transferFrom(owner(), address(this), amount);
+
         _setAllocation(account, amount);
     }
 
@@ -172,9 +173,14 @@ contract LinearVesting is Ownable, ReentrancyGuard {
             revert ArrayLengthshNotEqual();
         }
 
+        uint256 amount = 0;
+
         for (uint32 i = 0; i < recipients.length; i++) {
-            setAllocation(recipients[i], amounts[i]);
+            amount += amounts[i];
+            _setAllocation(recipients[i], amounts[i]);
         }
+
+        erc20Token.transferFrom(owner(), address(this), amount);
     }
 
     function claim() external nonReentrant {

@@ -210,17 +210,21 @@ contract PeriodicVesting is Ownable, ReentrancyGuard {
         if (block.timestamp > startDate) {
             revert CantChangeOngoingVesting();
         }
+        erc20Token.transferFrom(owner(), address(this), amount);
 
         _setAllocation(account, amount);
     }
 
-    function setAllocations(address[] calldata recepients, uint256[] calldata amounts) external onlyOwner {
-        if (recepients.length != amounts.length) {
+    function setAllocations(address[] calldata recipients, uint256[] calldata amounts) external onlyOwner {
+        if (recipients.length != amounts.length) {
             revert ArrayLengthshNotEqual();
         }
 
-        for (uint32 i = 0; i < recepients.length; i++) {
-            setAllocation(recepients[i], amounts[i]);
+        uint256 amount;
+
+        for (uint32 i = 0; i < recipients.length; i++) {
+            amount += amounts[i];
+            setAllocation(recipients[i], amounts[i]);
         }
     }
 
