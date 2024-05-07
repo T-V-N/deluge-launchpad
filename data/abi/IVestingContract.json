@@ -1,0 +1,40 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_erc20Token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "_startDate",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "_cliffPeriod",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_firstUnlockPercent",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint32",
+        "name": "_unlockPeriod",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_unlockPeriodPercent",
+        "type": "uint256"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]

@@ -1,0 +1,81 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountNative",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountUSDT",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountUSDC",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountDAI",
+        "type": "uint256"
+      }
+    ],
+    "name": "addRegisteredFunds",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountNative",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountUSDT",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountUSDC",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amountDAI",
+        "type": "uint256"
+      }
+    ],
+    "name": "removeRegisteredFunds",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
+      }
+    ],
+    "name": "unlockRegisteredFunds",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]
