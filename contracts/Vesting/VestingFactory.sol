@@ -11,7 +11,6 @@ import "./PeriodicVesting.sol";
 import "./LinearVesting.sol";
 
 // Errors
-error ERC20TokenNotZeroAddress();
 error NotZeroAddress();
 error StartDateShallBeInFuture();
 error PayForCreation();
@@ -61,7 +60,7 @@ contract VestingContractFactory is Ownable {
         vestingCount[msg.sender]++;
         totalVestingsCount++;
 
-        payable(owner()).transfer(msg.value);
+        payable(treasury).transfer(msg.value);
 
         emit VestingContractCreated(address(vestingContract), msg.sender);
 
@@ -80,14 +79,14 @@ contract VestingContractFactory is Ownable {
         vestingCount[msg.sender]++;
         totalVestingsCount++;
 
-        payable(owner()).transfer(msg.value);
+        payable(treasury).transfer(msg.value);
 
         emit VestingContractCreated(address(vestingContract), msg.sender);
 
         return address(vestingContract);
     }
 
-    function setSaleFee(uint256 _vestingFee) external onlyOwner {
+    function setVestingFee(uint256 _vestingFee) external onlyOwner {
         vestingFee = _vestingFee;
     }
 

@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import { ERC20Token } from "../typechain-types/contracts/ERC20.sol";
 import { VestingContractFactory } from "../typechain-types";
 import { LinearVesting } from "../typechain-types";
-import { customError } from "./utils/errors";
+import { customError } from "./utils/vestingErrors";
 
 async function getBlockTime() {
   const blockNum = await hre.ethers.provider.getBlockNumber();
@@ -247,7 +247,7 @@ describe("Linear vesting", async function () {
 
     await expect(
       vesting.connect(locker).setAllocations(addresses, amounts)
-    ).to.be.revertedWithCustomError(vesting, customError.arrayLengthshNotEqual);
+    ).to.be.revertedWithCustomError(vesting, customError.ArrayLengthsNotEqual);
   });
 
   it("should revert if there are no tokens to claim", async function () {

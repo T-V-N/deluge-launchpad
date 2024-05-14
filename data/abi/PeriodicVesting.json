@@ -47,7 +47,7 @@
   },
   {
     "inputs": [],
-    "name": "ArrayLengthshNotEqual",
+    "name": "ArrayLengthsNotEqual",
     "type": "error"
   },
   {

@@ -31,6 +31,16 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "InitProblem",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OnlyParentContract",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -113,6 +123,19 @@
     "name": "init",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "initialized",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

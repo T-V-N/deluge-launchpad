@@ -8,18 +8,13 @@ import { BSCPancakeswapV2Locker } from "../typechain-types";
 
 import { params } from "../utils/common";
 
-async function getBlockTime() {
-  const blockNum = await hre.ethers.provider.getBlockNumber();
-  const block = await hre.ethers.provider.getBlock(blockNum);
-  const ts = block?.timestamp || (Date.now() / 1000)
-
-  return ts
-}
+import { customError } from "./utils/saleErrors";
+import { getBlockTime } from "./utils/getBlockTime";
 
 describe("Uncapped Sale tests", async function () {
   let deployer: ethers.Signer, saler: ethers.Signer, depositor1: ethers.Signer, depositor2: ethers.Signer, depositor3: ethers.Signer;
   let sale: UncappedSale, factory: UncappedSaleContractFactory, saleToken: ERC20Token, locker: BSCPancakeswapV2Locker;
-  let ts: number;
+  let ts: bigint;
 
   beforeEach(async function () {
     [deployer, saler, depositor1, depositor2, depositor3] = await hre.ethers.getSigners();
@@ -45,7 +40,7 @@ describe("Uncapped Sale tests", async function () {
 
   it("Successful token sale happy path", async function () {
     const startTime = ts;
-    const endTime = startTime + 3600;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -70,9 +65,6 @@ describe("Uncapped Sale tests", async function () {
 
     await sale.connect(saler).finalizeSale({ value: params.lockerFee });
     assert(await sale.finished() == true, "Sale active after finish");
-
-    // await expect(await sale.startTime()).to.equal(startTime);
-    // await expect(await sale.endTime()).to.equal(endTime);
   });
 
   it("should allow adding multiple addresses to the whitelist", async function () {
@@ -99,7 +91,7 @@ describe("Uncapped Sale tests", async function () {
 
   it("should allow whitelisted addresses to buy tokens", async function () {
     const startTime = ts;
-    const endTime = startTime + 3600;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -126,7 +118,7 @@ describe("Uncapped Sale tests", async function () {
 
   it("should revert when non-whitelisted address tries to buy tokens", async function () {
     const startTime = ts;
-    const endTime = startTime + 3600;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -143,12 +135,12 @@ describe("Uncapped Sale tests", async function () {
     await sale.connect(saler).setWhitelist(true);
 
     await expect(sale.connect(depositor3).buyTokensWithNative({ value: 100 }))
-      .to.be.revertedWith("Sale: Caller is not whitelisted");
+      .to.be.revertedWithCustomError(sale, customError.NotWhitelisted);
   });
 
   it("should handle refunds correctly when the soft cap is not reached", async function () {
     const startTime = ts;
-    const endTime = startTime + 7200;  // Longer duration for potential late transactions
+    const endTime = startTime + 7200n;  // Longer duration for potential late transactions
     const depositAmount = 100;
     await sale.connect(saler).initializeSale(
       startTime,
@@ -172,7 +164,7 @@ describe("Uncapped Sale tests", async function () {
 
   it("should allow claiming of tokens after the sale is finalized", async function () {
     const startTime = ts;
-    const endTime = startTime + 3600;
+    const endTime = startTime + 3600n;
     const tokensForSale = 1_000_000n;
 
     await sale.connect(saler).initializeSale(
@@ -198,8 +190,8 @@ describe("Uncapped Sale tests", async function () {
   });
 
   it("should prevent unauthorized users from initializing the sale", async function () {
-    const startTime = ts - 100;
-    const endTime = startTime + 10;
+    const startTime = ts - 100n;
+    const endTime = startTime + 10n;
 
     // Attempt to initialize the sale from a non-owner account
     await expect(sale.connect(depositor1).initializeSale(startTime, endTime, 51, hre.ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock)).to.be.revertedWithCustomError;
@@ -209,7 +201,7 @@ describe("Uncapped Sale tests", async function () {
     const tokensForSale = hre.ethers.parseEther("1000");
     const softCap = hre.ethers.parseEther("10"); // Soft cap reached at 10 ETH
     const startTime = ts;
-    const endTime = startTime + 3600;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -236,7 +228,7 @@ describe("Uncapped Sale tests", async function () {
 
   it("should reject purchases below the minimum amount", async function () {
     const startTime = ts;
-    const endTime = startTime + 3600;
+    const endTime = startTime + 3600n;
 
     const minPurchase = hre.ethers.parseEther("0.01")
 
@@ -244,12 +236,12 @@ describe("Uncapped Sale tests", async function () {
 
     await expect(sale.connect(depositor1).buyTokensWithNative({
       value: hre.ethers.parseEther("0.001"),
-    })).to.be.revertedWith("Deposit limit reached");
+    })).to.be.revertedWithCustomError(sale, customError.paymentOutsideMinMaxAmounts);
   });
 
   it("should not allow purchases after sale has ended", async function () {
     const startTime = ts;
-    const endTime = startTime + 3600; // Sale duration is 1 hour
+    const endTime = startTime + 360n; // Sale duration is 1 hour
 
     await sale.connect(saler).initializeSale(startTime, endTime, 51, hre.ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock);
     await hre.ethers.provider.send("evm_increaseTime", [3600 * 2]); // Move time forward by 2 hours
@@ -257,12 +249,12 @@ describe("Uncapped Sale tests", async function () {
 
     await expect(sale.connect(depositor1).buyTokensWithNative({
       value: params.min,
-    })).to.be.revertedWith("Sale is not active");
+    })).to.be.revertedWithCustomError(sale, customError.outsideSaleTime);
   });
 
   it("should send ETH fee to the treasury on native token sale", async function () {
     const startTime = ts;
-    const endTime = startTime + 3600;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -292,7 +284,7 @@ describe("Uncapped Sale tests", async function () {
 
   it("should correctly handle refunds when the soft cap is not reached", async function () {
     const startTime = ts;
-    const endTime = startTime + 7200; // 2 hours sale duration
+    const endTime = startTime + 7200n; // 2 hours sale duration
     const depositAmount = hre.ethers.parseEther("1");
 
     await sale.connect(saler).initializeSale(

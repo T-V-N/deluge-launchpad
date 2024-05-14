@@ -4,15 +4,9 @@ import { ethers } from "ethers";
 import { ERC20Token } from "../typechain-types/contracts/ERC20.sol";
 import { VestingContractFactory } from "../typechain-types";
 import { PeriodicVesting } from "../typechain-types";
-import { customError } from "./utils/errors";
+import { customError } from "./utils/vestingErrors";
 
-async function getBlockTime() {
-  const blockNum = await hre.ethers.provider.getBlockNumber();
-  const block = await hre.ethers.provider.getBlock(blockNum);
-  const ts = block?.timestamp || (Date.now() / 1000)
-
-  return BigInt(ts)
-}
+import { getBlockTime } from "./utils/getBlockTime";
 
 describe("Periodic vesting", async function () {
   let treasury: ethers.Signer, locker: ethers.Signer, user1: ethers.Signer, user2: ethers.Signer, user3: ethers.Signer;
@@ -337,7 +331,7 @@ describe("Periodic vesting", async function () {
 
     await expect(
       vesting.connect(locker).setAllocations(addresses, amounts)
-    ).to.be.revertedWithCustomError(vesting, customError.arrayLengthshNotEqual);
+    ).to.be.revertedWithCustomError(vesting, customError.ArrayLengthsNotEqual);
   });
 
   it("should revert if there are no tokens to claim", async function () {

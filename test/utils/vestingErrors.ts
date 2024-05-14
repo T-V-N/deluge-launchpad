@@ -5,7 +5,7 @@ export const customError = {
   startDateMustBeGreaterThanCurrentTime: 'StartDateMustBeGreaterThanCurrentTime',
   unlockPeriodNotZero: 'UnlockPeriodNotZero',
   unlockPeriodPercentNotZero: 'UnlockPeriodPercentNotZero',
-  arrayLengthshNotEqual: 'ArrayLengthshNotEqual',
+  ArrayLengthsNotEqual: 'ArrayLengthsNotEqual',
   accountNotZeroAddress: 'AccountNotZeroAddress',
   contractMustHaveSufficientFunds: 'ContractMustHaveSufficientFunds',
   userStartedToClaim: 'UserStartedToClaim',

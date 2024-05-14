@@ -4,11 +4,12 @@ import { ethers } from "ethers";
 import { ERC20Token } from "../typechain-types/contracts/ERC20.sol";
 import { Sale } from "../typechain-types/contracts/Sale";
 import { SaleContractFactory } from "../typechain-types/contracts/Factory.sol";
-import { ReferralContract } from "../typechain-types";
 import { BSCPancakeswapV2Locker } from "../typechain-types";
+import { ReferralContract } from "../typechain-types";
 import { ReferralModule__factory } from "../typechain-types";
 
 import { params } from "../utils/common";
+import { customError } from "./utils/saleErrors";
 
 const eth1 = hre.ethers.parseEther("1")
 
@@ -180,7 +181,7 @@ describe("Native Launch tests", async function () {
     await sale.connect(saler).setWhitelist(true);
 
     await expect(sale.connect(depositor3).buyTokensWithNative("", { value: 100 }))
-      .to.be.revertedWith("Sale: Caller is not whitelisted");
+      .to.be.revertedWithCustomError(sale, customError.NotWhitelisted);
   });
 
   it("should allow native token purchases when sale is active", async function () {
@@ -240,7 +241,7 @@ describe("Native Launch tests", async function () {
 
     await expect(sale.connect(depositor1).buyTokensWithNative("", {
       value: hre.ethers.parseEther("0.001"),
-    })).to.be.revertedWithoutReason;
+    })).to.be.revertedWithCustomError(sale, customError.paymentOutsideMinMaxAmounts);
   });
 
   it("should not allow purchases after sale has ended", async function () {
@@ -254,7 +255,7 @@ describe("Native Launch tests", async function () {
 
     await expect(sale.connect(depositor1).buyTokensWithNative("", {
       value: 10,
-    })).to.be.revertedWithoutReason;
+    })).to.be.revertedWithCustomError(sale, customError.outsideSaleTime);
   });
 
 
@@ -327,7 +328,7 @@ describe("Native Launch tests", async function () {
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
     await refModule.init(sale);
     // Attempt to initialize the sale from a non-owner account
-    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, 50, 100, 200, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress())).to.be.revertedWithCustomError;
+    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, 50, 100, 200, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress())).to.be.reverted;
   });
 
 
@@ -349,7 +350,7 @@ describe("Native Launch tests", async function () {
     // Attempt to exceed hard cap
     await expect(sale.connect(depositor3).buyTokensWithNative("", {
       value: excessAmount
-    })).to.be.revertedWithoutReason;
+    })).to.be.revertedWithCustomError(sale, customError.saleGoalReached);
   });
 
 
@@ -365,7 +366,7 @@ describe("Native Launch tests", async function () {
       value: depositAmount
     });
 
-    await expect(sale.connect(depositor1).claim()).to.be.revertedWith("sale not finished");
+    await expect(sale.connect(depositor1).claim()).to.be.revertedWithCustomError(sale, customError.notFinished);
   });
 
   it("should prevent refunding to non-contributors and double refunding", async function () {
@@ -387,8 +388,8 @@ describe("Native Launch tests", async function () {
     await sale.connect(depositor1).refund();
 
     // Attempt to refund to non-contributor or double refund
-    await expect(sale.connect(depositor1).refund()).to.be.revertedWith("nothing to refund");
-    await expect(sale.connect(depositor2).refund()).to.be.revertedWith("nothing to refund");
+    await expect(sale.connect(depositor1).refund()).to.be.revertedWithCustomError(sale, customError.nothingToRefund);
+    await expect(sale.connect(depositor2).refund()).to.be.revertedWithCustomError(sale, customError.nothingToRefund);
   });
 });
 

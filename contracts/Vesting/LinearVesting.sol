@@ -51,7 +51,7 @@ contract LinearVesting is Ownable, ReentrancyGuard {
     error UnlockPeriodNotZero();
     error StartDateMustBeGreaterThanCurrentTime();
     error UserStartedToClaim(address account);
-    error ArrayLengthshNotEqual();
+    error ArrayLengthsNotEqual();
     error AccountNotZeroAddress();
     error ContractMustHaveSufficientFunds();
     error NothingToClaim();
@@ -77,16 +77,16 @@ contract LinearVesting is Ownable, ReentrancyGuard {
         uint256 claimed = allocation.claimed;
         uint256 amount = allocation.amount;
 
-        if (block.timestamp > startDate) {
-            uint256 claimAmount = ((block.timestamp - startDate) * amount) / unlockPeriod - claimed;
-            if (claimAmount > amount - claimed) {
-                return amount - claimed;
-            }
-
-            return claimAmount;
+        if (block.timestamp >= startDate + unlockPeriod) {
+            return amount - claimed;
         }
 
-        return 0;
+        uint256 claimAmount = ((block.timestamp - startDate) * amount) / unlockPeriod;
+        if (claimAmount > amount) {
+            claimAmount = amount;
+        }
+
+        return claimAmount - claimed;
     }
 
     function getAllocationCount() public view returns (uint256) {
@@ -170,17 +170,20 @@ contract LinearVesting is Ownable, ReentrancyGuard {
 
     function setAllocations(address[] calldata recipients, uint256[] calldata amounts) external onlyOwner {
         if (recipients.length != amounts.length) {
-            revert ArrayLengthshNotEqual();
+            revert ArrayLengthsNotEqual();
         }
 
-        uint256 amount = 0;
+        uint256 totalAmount = 0;
 
         for (uint32 i = 0; i < recipients.length; i++) {
-            amount += amounts[i];
-            _setAllocation(recipients[i], amounts[i]);
+            totalAmount += amounts[i];
         }
 
-        erc20Token.transferFrom(owner(), address(this), amount);
+        erc20Token.transferFrom(owner(), address(this), totalAmount);
+
+        for (uint32 i = 0; i < recipients.length; i++) {
+            _setAllocation(recipients[i], amounts[i]);
+        }
     }
 
     function claim() external nonReentrant {

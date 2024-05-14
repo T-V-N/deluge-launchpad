@@ -26,6 +26,11 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "FeeTooLow",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -45,6 +50,21 @@
       }
     ],
     "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "PayForCreation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ProvideLockerAndTreasury",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ProvideToken",
     "type": "error"
   },
   {
@@ -112,19 +132,6 @@
       }
     ],
     "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "initialized",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {

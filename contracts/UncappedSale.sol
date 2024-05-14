@@ -6,15 +6,38 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ILocker.sol";
 import "./interfaces/IUniswap.sol";
-import "hardhat/console.sol";
 
 contract UncappedSale is Ownable, ReentrancyGuard {
     modifier isWhitelisted() {
         if (isWhitelist) {
-            require(whitelist[msg.sender], "Sale: Caller is not whitelisted");
+            if (!whitelist[msg.sender]) {
+                revert NotWhitelisted();
+            }
         }
         _;
     }
+
+    //errors
+    error NotWhitelisted();
+    error InitProblem();
+    error WrongSaleDate();
+    error WrongLiquidityPt();
+    error SoftCapShouldBeLessThanHardCap();
+    error MinPurchaseShouldBeLessThanMaxPurchase();
+    error TooSmallLockPeriod();
+    error CantAcceptNative();
+    error CantAcceptERC20();
+    error TransferFailed();
+    error SaleNotEnded();
+    error FinishReverral();
+    error SaleGoalReached();
+    error PaymentOutsideMinMaxAmounts();
+    error OutsideSaleTime();
+    error CantRefund();
+    error NothingToRefund();
+    error NotFinished();
+    error NoDeposit();
+    error AlreadyClaimed();
 
     // Deps
     IERC20 public saleToken;
@@ -87,12 +110,25 @@ contract UncappedSale is Ownable, ReentrancyGuard {
         uint256 _maxPurchase,
         uint256 _lockPeriod
     ) external onlyOwner {
-        require(!initialized, "already initialized");
-        require(_endTime >= block.timestamp, "Start time is before current time");
-        require(_liquidityPt >= 50 && _liquidityPt <= 100, "Liquidity pt must be between 50 and 100");
-        require(_endTime > _startTime, "End time must be after start time");
-        require(_minPurchase <= _maxPurchase, "Min purchase shall be less than max");
-        require(_lockPeriod >= 3600, "Too short lock");
+        if (initialized) {
+            revert InitProblem();
+        }
+
+        if (_endTime < block.timestamp || _endTime <= _startTime) {
+            revert WrongSaleDate();
+        }
+
+        if (_liquidityPt < 50 || _liquidityPt > 100) {
+            revert WrongLiquidityPt();
+        }
+
+        if (_minPurchase > _maxPurchase) {
+            revert MinPurchaseShouldBeLessThanMaxPurchase();
+        }
+
+        if (_lockPeriod < 3600) {
+            revert TooSmallLockPeriod();
+        }
 
         initialized = true;
         startTime = _startTime;
@@ -105,27 +141,39 @@ contract UncappedSale is Ownable, ReentrancyGuard {
         tokensForSale = _tokensForSale;
         tokensForLiquidity = (tokensForSale * liquidityPt * (100 - raiseFee)) / 100 / 100;
 
-        console.log(tokensForSale, liquidityPt, raiseFee);
-
         saleToken.transferFrom(owner(), address(this), tokensForSale + tokensForLiquidity);
     }
 
     // Function to buy tokens with BNB
     function buyTokensWithNative() external payable nonReentrant isWhitelisted {
-        require(acceptsNativeToken, "native payments not accepted");
+        if (!acceptsNativeToken) {
+            revert CantAcceptNative();
+        }
+
         processPurchase(msg.sender, msg.value);
     }
 
     // Function to buy tokens with the specified ERC20 token
     function buyTokensWithERC20(uint256 _amount) external nonReentrant isWhitelisted {
-        require(!acceptsNativeToken, "Sale only accepts native token");
-        require(paymentToken.transferFrom(msg.sender, address(this), _amount), "Payment token transfer failed");
+        if (acceptsNativeToken) {
+            revert CantAcceptERC20();
+        }
+
+        if (!paymentToken.transferFrom(msg.sender, address(this), _amount)) {
+            revert TransferFailed();
+        }
+
         processPurchase(msg.sender, _amount);
     }
 
     function processPurchase(address _buyer, uint256 _amount) private {
-        require(_amount >= minPurchase && _amount <= maxPurchase, "Deposit limit reached");
-        require(block.timestamp >= startTime && block.timestamp <= endTime, "Sale is not active");
+        if (_amount < minPurchase || _amount > maxPurchase) {
+            revert PaymentOutsideMinMaxAmounts();
+        }
+
+        if (block.timestamp < startTime || block.timestamp > endTime) {
+            revert OutsideSaleTime();
+        }
 
         totalRaised += _amount;
         contributions[_buyer] += _amount;
@@ -134,7 +182,10 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     }
 
     function getPrice() public view returns (uint256) {
-        require(initialized, "cant get price of uninitialized sale");
+        if (!initialized) {
+            revert InitProblem();
+        }
+
         if (acceptsNativeToken) {
             if (totalRaised < softCap) {
                 return tokensForSale / softCap;
@@ -151,7 +202,9 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     }
 
     function finalizeSale() external payable onlyOwner nonReentrant {
-        require(block.timestamp > endTime, "Sale not ended yet");
+        if (block.timestamp <= endTime) {
+            revert SaleNotEnded();
+        }
 
         if (totalRaised >= softCap) {
             if (acceptsNativeToken) {
@@ -202,8 +255,13 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     }
 
     function refund() external nonReentrant {
-        require(block.timestamp > endTime && totalRaised < softCap, "cant refund");
-        require(contributions[msg.sender] > 0, "nothing to refund");
+        if (block.timestamp <= endTime || totalRaised >= softCap) {
+            revert CantRefund();
+        }
+
+        if (contributions[msg.sender] == 0) {
+            revert NothingToRefund();
+        }
 
         if (acceptsNativeToken) {
             payable(msg.sender).transfer(contributions[msg.sender]);
@@ -216,9 +274,18 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     }
 
     function claim() external nonReentrant {
-        require(finished, "sale not finished");
-        require(contributions[msg.sender] > 0, "no deposit");
-        require(!claimed[msg.sender], "already claimed");
+        if (!finished) {
+            revert NotFinished();
+        }
+
+        if (contributions[msg.sender] == 0) {
+            revert NoDeposit();
+        }
+
+        if (claimed[msg.sender]) {
+            revert AlreadyClaimed();
+        }
+
         claimed[msg.sender] = true;
 
         uint256 tokens = contributions[msg.sender] * getPrice();

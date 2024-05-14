@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-// Import OpenZeppelin's SafeMath library for secure mathematical operations
-import "@openzeppelin/contracts/utils/math/Math.sol";
-
-// Import interfaces for ERC20 tokens (USDT, USDC, DAI)
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 import "./UncappedSale.sol";
 
 // Basic interface for Sale contracts
@@ -28,7 +22,11 @@ interface ISaleContract {
 
 // UncappedSaleContractFactory
 contract UncappedSaleContractFactory is Ownable {
-    using Math for uint256;
+    //errors
+    error FeeTooLow();
+    error ProvideLockerAndTreasury();
+    error ProvideToken();
+    error PayForCreation();
 
     mapping(address => address[]) public launchesDeployed;
     mapping(address => uint256) public launchCount;
@@ -44,11 +42,14 @@ contract UncappedSaleContractFactory is Ownable {
     uint256 public saleFee;
     uint256 public raiseFee;
 
-    bool public initialized = false;
-
     constructor(address _locker, uint256 _saleFee, uint256 _raiseFee, address _treasury) Ownable(msg.sender) {
-        // require(_saleFee > 10 ^ 15 && _raiseFee > 10 ^ 15, "fee to low");
-        // require(_locker != address(0) && _treasury != address(0), "define locker and treasury");
+        // if (_saleFee < 10 ** 15 || _raiseFee < 10 ** 15) {
+        //     revert FeeTooLow();
+        // }
+
+        if (_locker == address(0) || _treasury == address(0)) {
+            revert ProvideLockerAndTreasury();
+        }
 
         locker = _locker;
         raiseFee = _raiseFee;
@@ -73,8 +74,13 @@ contract UncappedSaleContractFactory is Ownable {
     }
 
     function createUncappedSaleContract(address _saleTokenAddress, address _paymentTokenAddress, address[] memory _whitelist) public payable returns (address sale) {
-        require(_saleTokenAddress != address(0), "define token to sale");
-        require(msg.value >= saleFee, "sale creation should be paid");
+        if (_saleTokenAddress == address(0)) {
+            revert ProvideToken();
+        }
+
+        if (msg.value < saleFee) {
+            revert PayForCreation();
+        }
 
         UncappedSale saleContract = new UncappedSale(_saleTokenAddress, _paymentTokenAddress, locker, treasury, raiseFee, _whitelist);
 
@@ -83,7 +89,8 @@ contract UncappedSaleContractFactory is Ownable {
         launchCount[msg.sender]++;
         totalLaunchesCount++;
 
-        payable(owner()).transfer(msg.value);
+        (bool success, ) = owner().call{value: msg.value}("");
+        require(success);
 
         emit SaleContractCreated(address(saleContract), msg.sender);
 

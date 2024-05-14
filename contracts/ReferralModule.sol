@@ -9,9 +9,15 @@ import "./interfaces/IReferral.sol";
 
 contract ReferralModule is Ownable, ReentrancyGuard {
     modifier onlyParent() {
-        require(msg.sender == parent, "Sale: Caller is not whitelisted");
+        if (msg.sender != parent) {
+            revert OnlyParentContract();
+        }
         _;
     }
+
+    //error
+    error OnlyParentContract();
+    error InitProblem();
 
     // ref
     IReferralContract referralContract;
@@ -23,6 +29,7 @@ contract ReferralModule is Ownable, ReentrancyGuard {
     bytes[] codesRegistered;
     uint256 finalizedIndex;
     bool public referralFinalized;
+    bool public initialized;
 
     bool acceptsNativeToken;
     address paymentToken;
@@ -37,6 +44,11 @@ contract ReferralModule is Ownable, ReentrancyGuard {
     }
 
     function init(address _parent) external onlyOwner {
+        if (initialized) {
+            revert InitProblem();
+        }
+
+        initialized = true;
         parent = _parent;
     }
 
@@ -75,7 +87,7 @@ contract ReferralModule is Ownable, ReentrancyGuard {
         }
     }
 
-    function finalizeReferralCodes(uint256 count) external payable onlyOwner nonReentrant {
+    function finalizeReferralCodes(uint256 count) external payable onlyParent nonReentrant {
         if (count > codesRegistered.length - finalizedIndex) {
             count = codesRegistered.length - finalizedIndex;
         }

@@ -5,17 +5,14 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// import "hardhat/console.sol";
-
 contract PeriodicVesting is Ownable, ReentrancyGuard {
-    //Variables, structs, errors, modifiers, events------------------------
     error ERC20TokenNotZeroAddress();
     error UnlockPeriodNotZero();
     error FirstUnlockTooBig();
     error UnlockPeriodPercentNotZero();
     error StartDateMustBeGreaterThanCurrentTime();
     error UserStartedToClaim(address account);
-    error ArrayLengthshNotEqual();
+    error ArrayLengthsNotEqual();
     error AccountNotZeroAddress();
     error ContractMustHaveSufficientFunds();
     error NothingToClaim();
@@ -106,7 +103,9 @@ contract PeriodicVesting is Ownable, ReentrancyGuard {
                 return firstUnlockAmount;
             }
         } else {
-            uint256 claimAmount = (calculatePassedPeriod() * (amount * unlockPeriodPercent)) / PERCENT_DIVIDER + firstUnlockAmount - claimed;
+            uint256 passedPeriods = calculatePassedPeriod();
+            uint256 periodicAmount = (passedPeriods * amount * unlockPeriodPercent) / PERCENT_DIVIDER;
+            uint256 claimAmount = firstUnlockAmount + periodicAmount - claimed;
 
             if (claimAmount > amount - claimed) {
                 return amount - claimed;
@@ -217,14 +216,19 @@ contract PeriodicVesting is Ownable, ReentrancyGuard {
 
     function setAllocations(address[] calldata recipients, uint256[] calldata amounts) external onlyOwner {
         if (recipients.length != amounts.length) {
-            revert ArrayLengthshNotEqual();
+            revert ArrayLengthsNotEqual();
         }
 
-        uint256 amount;
+        uint256 totalAmount;
 
         for (uint32 i = 0; i < recipients.length; i++) {
-            amount += amounts[i];
-            setAllocation(recipients[i], amounts[i]);
+            totalAmount += amounts[i];
+        }
+
+        erc20Token.transferFrom(owner(), address(this), totalAmount);
+
+        for (uint32 i = 0; i < recipients.length; i++) {
+            _setAllocation(recipients[i], amounts[i]);
         }
     }
 

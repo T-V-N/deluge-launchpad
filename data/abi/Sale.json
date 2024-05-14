@@ -41,6 +41,66 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "AlreadyClaimed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "CantAcceptERC20",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "CantAcceptNative",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "CantRefund",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "FinishReverral",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InitProblem",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "MinPurchaseShouldBeLessThanMaxPurchase",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoDeposit",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotFinished",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotWhitelisted",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NothingToRefund",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OutsideSaleTime",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -64,7 +124,47 @@
   },
   {
     "inputs": [],
+    "name": "PaymentOutsideMinMaxAmounts",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SaleGoalReached",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SaleNotEnded",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SoftCapShouldBeLessThanHardCap",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TooSmallLockPeriod",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TransferFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "WrongLiquidityPt",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "WrongSaleDate",
     "type": "error"
   },
   {
@@ -266,6 +366,19 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "count",
+        "type": "uint256"
+      }
+    ],
+    "name": "finalizeRef",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "finalizeSale",
     "outputs": [],
@@ -283,19 +396,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "count",
-        "type": "uint256"
-      }
-    ],
-    "name": "finnalizeRef",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

@@ -12,10 +12,34 @@ import "./interfaces/IUniswap.sol";
 contract Sale is Ownable, ReentrancyGuard {
     modifier isWhitelisted() {
         if (isWhitelist) {
-            require(whitelist[msg.sender], "Sale: Caller is not whitelisted");
+            if (!whitelist[msg.sender]) {
+                revert NotWhitelisted();
+            }
         }
         _;
     }
+
+    //errors
+    error NotWhitelisted();
+    error InitProblem();
+    error WrongSaleDate();
+    error WrongLiquidityPt();
+    error SoftCapShouldBeLessThanHardCap();
+    error MinPurchaseShouldBeLessThanMaxPurchase();
+    error TooSmallLockPeriod();
+    error CantAcceptNative();
+    error CantAcceptERC20();
+    error TransferFailed();
+    error PaymentOutsideMinMaxAmounts();
+    error OutsideSaleTime();
+    error SaleNotEnded();
+    error FinishReverral();
+    error SaleGoalReached();
+    error CantRefund();
+    error NothingToRefund();
+    error NotFinished();
+    error NoDeposit();
+    error AlreadyClaimed();
 
     // Deps
     IERC20 public saleToken;
@@ -27,7 +51,6 @@ contract Sale is Ownable, ReentrancyGuard {
     address public treasury;
 
     // Sale
-    uint256 hundred = 100;
     bool public acceptsNativeToken;
     uint256 public startTime;
     uint256 public endTime;
@@ -104,13 +127,29 @@ contract Sale is Ownable, ReentrancyGuard {
         uint256 _lockPeriod,
         address _referralContract
     ) external onlyOwner {
-        require(!initialized);
-        require(_endTime >= block.timestamp);
-        require(_endTime > _startTime);
-        require(_liquidityPt >= 50 && _liquidityPt <= hundred);
-        require(_softCap <= _hardCap);
-        require(_minPurchase <= _maxPurchase);
-        require(_lockPeriod >= 3600);
+        if (initialized) {
+            revert InitProblem();
+        }
+
+        if (_endTime < block.timestamp || _endTime <= _startTime) {
+            revert WrongSaleDate();
+        }
+
+        if (_liquidityPt < 50 || _liquidityPt > 100) {
+            revert WrongLiquidityPt();
+        }
+
+        if (_softCap > _hardCap) {
+            revert SoftCapShouldBeLessThanHardCap();
+        }
+
+        if (_minPurchase > _maxPurchase) {
+            revert MinPurchaseShouldBeLessThanMaxPurchase();
+        }
+
+        if (_lockPeriod < 3600) {
+            revert TooSmallLockPeriod();
+        }
 
         initialized = true;
 
@@ -130,26 +169,43 @@ contract Sale is Ownable, ReentrancyGuard {
             referralModule = IReferralModule(_referralContract);
         }
 
-        saleToken.transferFrom(owner(), address(this), (hardCap * salePrice) + ((((liquidityPrice * hardCap * liquidityPt) * (hundred - raiseFee)) / hundred) / hundred));
+        saleToken.transferFrom(owner(), address(this), (hardCap * salePrice) + ((((liquidityPrice * hardCap * liquidityPt) * (100 - raiseFee)) / 100) / 100));
     }
 
     // Function to buy tokens with BNB
     function buyTokensWithNative(string memory refCode) external payable nonReentrant isWhitelisted {
-        require(acceptsNativeToken);
+        if (!acceptsNativeToken) {
+            revert CantAcceptNative();
+        }
+
         processPurchase(msg.sender, msg.value, refCode);
     }
 
     // Function to buy tokens with the specified ERC20 token
     function buyTokensWithERC20(uint256 _amount, string memory refCode) external nonReentrant isWhitelisted {
-        require(!acceptsNativeToken);
-        require(paymentToken.transferFrom(msg.sender, address(this), _amount), "Payment token transfer failed");
+        if (acceptsNativeToken) {
+            revert CantAcceptERC20();
+        }
+
+        if (!paymentToken.transferFrom(msg.sender, address(this), _amount)) {
+            revert TransferFailed();
+        }
+
         processPurchase(msg.sender, _amount, refCode);
     }
 
     function processPurchase(address _buyer, uint256 _amount, string memory refCode) private {
-        require(_amount >= minPurchase && _amount <= maxPurchase);
-        require(block.timestamp >= startTime && block.timestamp <= endTime);
-        require(totalRaised + _amount <= hardCap);
+        if (_amount < minPurchase || _amount > maxPurchase) {
+            revert PaymentOutsideMinMaxAmounts();
+        }
+
+        if (block.timestamp < startTime || block.timestamp > endTime) {
+            revert OutsideSaleTime();
+        }
+
+        if (totalRaised + _amount > hardCap) {
+            revert SaleGoalReached();
+        }
 
         if (referralEnabled && bytes(refCode).length != 0) {
             referralModule.processReferralCode(refCode, _amount);
@@ -161,13 +217,15 @@ contract Sale is Ownable, ReentrancyGuard {
         emit TokensPurchased(msg.sender, _amount);
     }
 
-    function finnalizeRef(uint256 count) external onlyOwner {
+    function finalizeRef(uint256 count) external onlyOwner {
         if (!refshareSent) {
             if (acceptsNativeToken) {
                 payable(address(referralModule)).transfer(referralModule.getRefshareBalance());
             } else {
                 paymentToken.approve(address(referralModule), referralModule.getRefshareBalance());
             }
+
+            refshareSent = true;
         }
         if (acceptsNativeToken) {
             referralModule.finalizeReferralCodes(count);
@@ -175,17 +233,22 @@ contract Sale is Ownable, ReentrancyGuard {
     }
 
     function finalizeSale() external payable onlyOwner nonReentrant {
-        require(block.timestamp > endTime, "Sale not ended yet");
-        require(!referralEnabled || referralModule.isFinalized(), "Should finalize referral fees");
+        if (block.timestamp <= endTime) {
+            revert SaleNotEnded();
+        }
+
+        if (referralEnabled && !referralModule.isFinalized()) {
+            revert FinishReverral();
+        }
 
         if (totalRaised >= softCap) {
             if (acceptsNativeToken) {
-                uint256 ethAmount = (totalRaised * (hundred - raiseFee)) / hundred;
-                uint256 tokenAmount = (liquidityPrice * ethAmount * liquidityPt) / hundred;
+                uint256 ethAmount = (totalRaised * (100 - raiseFee)) / 100;
+                uint256 tokenAmount = (liquidityPrice * ethAmount * liquidityPt) / 100;
 
                 saleToken.approve(address(router), tokenAmount);
 
-                router.addLiquidityETH{value: (ethAmount * liquidityPt) / hundred}(address(saleToken), tokenAmount, 0, 0, address(this), block.timestamp);
+                router.addLiquidityETH{value: (ethAmount * liquidityPt) / 100}(address(saleToken), tokenAmount, 0, 0, address(this), block.timestamp);
 
                 IERC20 lpToken = IERC20(factory.getPair(router.WETH(), address(saleToken)));
                 uint256 lpTokensAmount = lpToken.balanceOf(address(this));
@@ -194,7 +257,7 @@ contract Sale is Ownable, ReentrancyGuard {
 
                 locker.lockTokens{value: msg.value}(address(lpToken), lpTokensAmount, lockPeriod, owner());
 
-                payable(treasury).transfer((totalRaised * raiseFee) / hundred);
+                payable(treasury).transfer((totalRaised * raiseFee) / 100);
 
                 payable(owner()).transfer(address(this).balance);
 
@@ -203,13 +266,13 @@ contract Sale is Ownable, ReentrancyGuard {
                     saleToken.transfer(owner(), remainedTokens);
                 }
             } else {
-                uint256 tokenAmountPayment = (totalRaised * (hundred - raiseFee)) / hundred;
-                uint256 tokenAmountSale = (liquidityPrice * tokenAmountPayment * liquidityPt) / hundred;
+                uint256 tokenAmountPayment = (totalRaised * (100 - raiseFee)) / 100;
+                uint256 tokenAmountSale = (liquidityPrice * tokenAmountPayment * liquidityPt) / 100;
 
                 paymentToken.approve(address(router), tokenAmountPayment);
                 saleToken.approve(address(router), tokenAmountSale);
 
-                router.addLiquidity(address(paymentToken), address(saleToken), (tokenAmountPayment * liquidityPt) / hundred, tokenAmountSale, 0, 0, address(this), block.timestamp);
+                router.addLiquidity(address(paymentToken), address(saleToken), (tokenAmountPayment * liquidityPt) / 100, tokenAmountSale, 0, 0, address(this), block.timestamp);
 
                 IERC20 lpToken = IERC20(factory.getPair(address(paymentToken), address(saleToken)));
                 uint256 lpTokensAmount = lpToken.balanceOf(address(this));
@@ -217,7 +280,7 @@ contract Sale is Ownable, ReentrancyGuard {
                 lpToken.approve(address(locker), lpTokensAmount);
                 locker.lockTokens{value: msg.value}(address(lpToken), lpTokensAmount, lockPeriod, owner());
 
-                paymentToken.transfer(treasury, ((totalRaised * raiseFee) / hundred));
+                paymentToken.transfer(treasury, ((totalRaised * raiseFee) / 100));
 
                 paymentToken.transfer(owner(), paymentToken.balanceOf(address(this)));
                 uint256 remainedTokens = (hardCap - totalRaised) * salePrice;
@@ -234,8 +297,13 @@ contract Sale is Ownable, ReentrancyGuard {
     }
 
     function refund() external nonReentrant {
-        require(block.timestamp > endTime && totalRaised < softCap, "cant refund");
-        require(contributions[msg.sender] > 0, "nothing to refund");
+        if (block.timestamp <= endTime || totalRaised >= softCap) {
+            revert CantRefund();
+        }
+
+        if (contributions[msg.sender] == 0) {
+            revert NothingToRefund();
+        }
 
         if (acceptsNativeToken) {
             payable(msg.sender).transfer(contributions[msg.sender]);
@@ -248,13 +316,23 @@ contract Sale is Ownable, ReentrancyGuard {
     }
 
     function claim() external nonReentrant {
-        require(finished, "sale not finished");
-        require(contributions[msg.sender] > 0, "no deposit");
-        require(!claimed[msg.sender], "already claimed");
+        if (!finished) {
+            revert NotFinished();
+        }
+
+        if (contributions[msg.sender] == 0) {
+            revert NoDeposit();
+        }
+
+        if (claimed[msg.sender]) {
+            revert AlreadyClaimed();
+        }
+
         claimed[msg.sender] = true;
 
         uint256 tokens = contributions[msg.sender] * salePrice;
         saleToken.transfer(msg.sender, tokens);
+
         emit TokensClaimed(msg.sender, tokens);
     }
 
