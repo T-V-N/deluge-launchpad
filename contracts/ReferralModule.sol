@@ -82,8 +82,6 @@ contract ReferralModule is Ownable, ReentrancyGuard {
             IERC20(paymentToken).transferFrom(parent, address(this), refshareBalance);
             IERC20(paymentToken).approve(address(referralContract), refshareBalance);
             referralContract.unlockRegisteredFunds(code);
-        } else {
-            return;
         }
     }
 

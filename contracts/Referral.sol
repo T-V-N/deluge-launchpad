@@ -6,6 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ReferralContract is ReentrancyGuard, Ownable {
+    modifier codeExists(string memory code) {
+        if (referralCodes[code].owner != address(0)) {
+            revert CodeDoesntExist();
+        }
+        _;
+    }
+
     struct ReferralSource {
         bool unlocked;
         uint256 registeredNative;
@@ -23,7 +30,10 @@ contract ReferralContract is ReentrancyGuard, Ownable {
         mapping(address => ReferralSource) sources;
     }
 
-    mapping(string => ReferralCode) referralCodes;
+    mapping(string => ReferralCode) public referralCodes;
+    mapping(address => bool) isSource;
+    mapping(string => address[]) sources;
+    uint256 public sourceCount;
     address public treasury;
     uint256 public fee;
     IERC20 public USDT;
@@ -45,72 +55,93 @@ contract ReferralContract is ReentrancyGuard, Ownable {
         treasury = _treasury;
     }
 
-    function createReferralCode(string memory code) external payable nonReentrant {
-        require(referralCodes[code].owner == address(0), "Referral code already exists");
-        require(msg.value >= fee, "you shall pay for creation");
+    error CodeAlreadyExists();
+    error CodeDoesntExist();
+    error PayForCreation();
 
-        payable(treasury).transfer(msg.value);
+    function _createCode(string memory code) private {
+        if (referralCodes[code].owner != address(0)) {
+            revert CodeAlreadyExists();
+        }
 
         referralCodes[code].owner = msg.sender;
 
         emit ReferralCodeCreated(code, msg.sender);
     }
 
-    function deleteReferralCode(string memory code) external nonReentrant onlyOwner {
-        require(referralCodes[code].owner != address(0), "Referral code does not exist");
+    function createReferralCodeAdmin(string memory code) external nonReentrant onlyOwner {
+        _createCode(code);
+    }
 
+    function createReferralCode(string memory code) external payable nonReentrant {
+        if (msg.value < fee) {
+            revert PayForCreation();
+        }
+        payable(treasury).transfer(msg.value);
+
+        _createCode(code);
+    }
+
+    function _transferCode(string memory code) private {
         uint256 balanceNative = referralCodes[code].balanceNative;
         uint256 balanceUSDT = referralCodes[code].balanceUSDT;
         uint256 balanceUSDC = referralCodes[code].balanceUSDC;
         uint256 balanceDAI = referralCodes[code].balanceDAI;
-
-        delete referralCodes[code];
+        address owner = referralCodes[code].owner;
 
         if (balanceNative > 0) {
-            payable(referralCodes[code].owner).transfer(balanceNative);
+            payable(owner).transfer(balanceNative);
         }
 
         if (balanceUSDT > 0) {
-            USDT.transfer(referralCodes[code].owner, balanceUSDT);
+            USDT.transfer(owner, balanceUSDT);
         }
 
         if (balanceUSDC > 0) {
-            USDC.transfer(referralCodes[code].owner, balanceUSDC);
+            USDC.transfer(owner, balanceUSDC);
         }
 
         if (balanceDAI > 0) {
-            DAI.transfer(referralCodes[code].owner, balanceDAI);
+            DAI.transfer(owner, balanceDAI);
         }
+    }
+
+    function deleteReferralCode(string memory code) external nonReentrant codeExists(code) onlyOwner {
+        _transferCode(code);
+        delete referralCodes[code];
 
         emit ReferralCodeDeleted(code, msg.sender);
     }
 
-    function addRegisteredFunds(string memory code, uint256 amountNative, uint256 amountUSDT, uint256 amountUSDC, uint256 amountDAI) external nonReentrant {
-        require(referralCodes[code].owner != address(0), "Referral code does not exist");
+    function addRegisteredFunds(string memory code, uint256 amountNative, uint256 amountUSDT, uint256 amountUSDC, uint256 amountDAI) external nonReentrant codeExists(code) {
         require(!referralCodes[code].sources[msg.sender].unlocked, "already unlocked");
 
-        referralCodes[code].sources[msg.sender].registeredNative += amountDAI;
-        referralCodes[code].sources[msg.sender].registeredUSDT += amountDAI;
-        referralCodes[code].sources[msg.sender].registeredUSDC += amountDAI;
+        if (!isSource[msg.sender]) {
+            isSource[msg.sender] = true;
+            sourceCount++;
+            sources[code].push(msg.sender);
+        }
+
+        referralCodes[code].sources[msg.sender].registeredNative += amountNative;
+        referralCodes[code].sources[msg.sender].registeredUSDT += amountUSDT;
+        referralCodes[code].sources[msg.sender].registeredUSDC += amountUSDC;
         referralCodes[code].sources[msg.sender].registeredDAI += amountDAI;
 
         emit FundsAdded(code, amountNative, amountUSDT, amountUSDC, amountDAI);
     }
 
-    function removeRegisteredFunds(string memory code, uint256 amountNative, uint256 amountUSDT, uint256 amountUSDC, uint256 amountDAI) external {
-        require(referralCodes[code].owner != address(0), "Referral code does not exist");
+    function removeRegisteredFunds(string memory code, uint256 amountNative, uint256 amountUSDT, uint256 amountUSDC, uint256 amountDAI) external codeExists(code) {
         require(!referralCodes[code].sources[msg.sender].unlocked, "already unlocked");
 
-        referralCodes[code].sources[msg.sender].registeredNative -= amountDAI;
-        referralCodes[code].sources[msg.sender].registeredUSDT -= amountDAI;
-        referralCodes[code].sources[msg.sender].registeredUSDC -= amountDAI;
+        referralCodes[code].sources[msg.sender].registeredNative -= amountNative;
+        referralCodes[code].sources[msg.sender].registeredUSDT -= amountUSDT;
+        referralCodes[code].sources[msg.sender].registeredUSDC -= amountUSDC;
         referralCodes[code].sources[msg.sender].registeredDAI -= amountDAI;
 
         emit FundsRemoved(code, amountNative, amountUSDT, amountUSDC, amountDAI);
     }
 
-    function unlockRegisteredFunds(string memory code) external payable {
-        require(referralCodes[code].owner != address(0), "Referral code does not exist");
+    function unlockRegisteredFunds(string memory code) external payable codeExists(code) {
         require(!referralCodes[code].sources[msg.sender].unlocked, "already unlocked");
 
         referralCodes[code].sources[msg.sender].unlocked = true;
@@ -140,34 +171,14 @@ contract ReferralContract is ReentrancyGuard, Ownable {
         }
     }
 
-    function claimCode(string memory code) external {
-        require(referralCodes[code].owner != address(0), "Referral code does not exist");
+    function claimCode(string memory code) external codeExists(code) {
         require(referralCodes[code].owner == msg.sender, "can only unlock owned codes");
 
-        uint256 balanceNative = referralCodes[code].balanceNative;
-        uint256 balanceUSDT = referralCodes[code].balanceUSDT;
-        uint256 balanceUSDC = referralCodes[code].balanceUSDC;
-        uint256 balanceDAI = referralCodes[code].balanceDAI;
+        _transferCode(code);
 
         referralCodes[code].balanceNative = 0;
         referralCodes[code].balanceUSDT = 0;
         referralCodes[code].balanceUSDC = 0;
         referralCodes[code].balanceDAI = 0;
-
-        if (balanceNative > 0) {
-            payable(referralCodes[code].owner).transfer(balanceNative);
-        }
-
-        if (balanceUSDT > 0) {
-            USDT.transfer(referralCodes[code].owner, balanceUSDT);
-        }
-
-        if (balanceUSDC > 0) {
-            USDC.transfer(referralCodes[code].owner, balanceUSDC);
-        }
-
-        if (balanceDAI > 0) {
-            DAI.transfer(referralCodes[code].owner, balanceDAI);
-        }
     }
 }
