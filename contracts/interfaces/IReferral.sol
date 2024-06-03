@@ -7,4 +7,6 @@ interface IReferralContract {
     function removeRegisteredFunds(string memory code, uint256 amountNative, uint256 amountUSDT, uint256 amountUSDC, uint256 amountDAI) external;
 
     function unlockRegisteredFunds(string memory code) external payable;
+
+    function codeExist(string memory code) external view returns (bool);
 }

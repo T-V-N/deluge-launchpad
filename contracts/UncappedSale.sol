@@ -29,7 +29,7 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     error CantAcceptERC20();
     error TransferFailed();
     error SaleNotEnded();
-    error FinishReverral();
+    error FinishReferral();
     error SaleGoalReached();
     error PaymentOutsideMinMaxAmounts();
     error OutsideSaleTime();
@@ -38,6 +38,7 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     error NotFinished();
     error NoDeposit();
     error AlreadyClaimed();
+    error SaleDurationMustBeLessThanWeek();
 
     // Deps
     IERC20 public saleToken;
@@ -128,6 +129,10 @@ contract UncappedSale is Ownable, ReentrancyGuard {
 
         if (_lockPeriod < 3600) {
             revert TooSmallLockPeriod();
+        }
+
+        if (endTime - startTime > 7 days) {
+            revert SaleDurationMustBeLessThanWeek();
         }
 
         initialized = true;

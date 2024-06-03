@@ -11,4 +11,8 @@ interface IReferralModule {
     function isFinalized() external view returns (bool);
 
     function getRefshareBalance() external view returns (uint256);
+
+    function getRefshareBalanceFor(uint256 count) external view returns (uint256);
+
+    function getRefContract() external view returns (address);
 }

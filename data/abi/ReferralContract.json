@@ -31,6 +31,31 @@
     "type": "constructor"
   },
   {
+    "inputs": [],
+    "name": "AlreadyUnlocked",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "CodeAlreadyExists",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "CodeDoesntBelongToCaller",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "CodeDoesntExist",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NothingToClaim",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -54,7 +79,22 @@
   },
   {
     "inputs": [],
+    "name": "PayForCreation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ShouldProvideValueForUnlock",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "WrongERC20Address",
     "type": "error"
   },
   {
@@ -281,9 +321,41 @@
         "type": "string"
       }
     ],
+    "name": "codeExist",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
+      }
+    ],
     "name": "createReferralCode",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "code",
+        "type": "string"
+      }
+    ],
+    "name": "createReferralCodeAdmin",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -329,6 +401,45 @@
     "inputs": [
       {
         "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "referralCodes",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "balanceNative",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "balanceUSDT",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "balanceUSDC",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "balanceDAI",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
         "name": "code",
         "type": "string"
       },
@@ -363,6 +474,19 @@
     "name": "renounceOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "sourceCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

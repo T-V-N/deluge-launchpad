@@ -57,7 +57,7 @@
   },
   {
     "inputs": [],
-    "name": "FinishReverral",
+    "name": "FinishReferral",
     "type": "error"
   },
   {
@@ -125,6 +125,11 @@
   {
     "inputs": [],
     "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SaleDurationMustBeLessThanWeek",
     "type": "error"
   },
   {

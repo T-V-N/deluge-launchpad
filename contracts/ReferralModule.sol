@@ -18,12 +18,13 @@ contract ReferralModule is Ownable, ReentrancyGuard {
     //error
     error OnlyParentContract();
     error InitProblem();
+    error ShouldProvideValueForUnlock();
 
     // ref
     IReferralContract referralContract;
-    address USDT;
-    address USDC;
-    address DAI;
+    address public USDT;
+    address public USDC;
+    address public DAI;
     uint256 public refshareBalance;
     mapping(bytes => uint256) codeBalances;
     bytes[] codesRegistered;
@@ -32,15 +33,16 @@ contract ReferralModule is Ownable, ReentrancyGuard {
     bool public initialized;
 
     bool acceptsNativeToken;
-    address paymentToken;
+    address public paymentToken;
     address parent;
 
-    constructor(bool _acceptsNativeToken, address _paymentToken, address _USDT, address _USDC, address _DAI) Ownable(msg.sender) {
+    constructor(bool _acceptsNativeToken, address _paymentToken, address _USDT, address _USDC, address _DAI, address _referralContract) Ownable(msg.sender) {
         USDT = _USDT;
         USDC = _USDC;
         DAI = _DAI;
         acceptsNativeToken = _acceptsNativeToken;
         paymentToken = _paymentToken;
+        referralContract = IReferralContract(_referralContract);
     }
 
     function init(address _parent) external onlyOwner {
@@ -52,7 +54,11 @@ contract ReferralModule is Ownable, ReentrancyGuard {
         parent = _parent;
     }
 
-    function processReferralCode(string memory code, uint256 value) private {
+    function processReferralCode(string memory code, uint256 value) external onlyParent {
+        if (!referralContract.codeExist(code)) {
+            return;
+        }
+
         if (acceptsNativeToken) {
             referralContract.addRegisteredFunds(code, value, 0, 0, 0);
         } else if (address(paymentToken) == USDT) {
@@ -73,19 +79,44 @@ contract ReferralModule is Ownable, ReentrancyGuard {
         refshareBalance += value;
     }
 
+    function removeFromCode(string memory code, uint256 value) external onlyParent {
+        if (!referralContract.codeExist(code)) {
+            return;
+        }
+
+        if (acceptsNativeToken) {
+            referralContract.removeRegisteredFunds(code, value, 0, 0, 0);
+        } else if (address(paymentToken) == USDT) {
+            referralContract.removeRegisteredFunds(code, 0, value, 0, 0);
+        } else if (address(paymentToken) == USDC) {
+            referralContract.removeRegisteredFunds(code, 0, 0, value, 0);
+        } else if (address(paymentToken) == DAI) {
+            referralContract.removeRegisteredFunds(code, 0, 0, 0, value);
+        } else {
+            return;
+        }
+
+        codeBalances[bytes(code)] -= value;
+        refshareBalance -= value;
+    }
+
     function finalizeReferralCode(string memory code) private {
         uint256 codeBalance = codeBalances[bytes(code)];
 
         if (acceptsNativeToken) {
             referralContract.unlockRegisteredFunds{value: codeBalance}(code);
         } else if (address(paymentToken) == USDT || (address(paymentToken) == USDC) || (address(paymentToken) == DAI)) {
-            IERC20(paymentToken).transferFrom(parent, address(this), refshareBalance);
-            IERC20(paymentToken).approve(address(referralContract), refshareBalance);
+            IERC20(paymentToken).transferFrom(parent, address(this), codeBalance);
+            IERC20(paymentToken).approve(address(referralContract), codeBalance);
             referralContract.unlockRegisteredFunds(code);
         }
     }
 
     function finalizeReferralCodes(uint256 count) external payable onlyParent nonReentrant {
+        if (msg.value != getRefshareBalanceFor(count) && acceptsNativeToken) {
+            revert ShouldProvideValueForUnlock();
+        }
+
         if (count > codesRegistered.length - finalizedIndex) {
             count = codesRegistered.length - finalizedIndex;
         }
@@ -108,5 +139,23 @@ contract ReferralModule is Ownable, ReentrancyGuard {
 
     function getRefshareBalance() public view returns (uint256) {
         return refshareBalance;
+    }
+
+    function getRefshareBalanceFor(uint256 count) public view returns (uint256) {
+        if (count > codesRegistered.length - finalizedIndex) {
+            count = codesRegistered.length - finalizedIndex;
+        }
+
+        uint endIndex = finalizedIndex + count;
+        uint256 balance;
+        for (uint i = finalizedIndex; i < endIndex; i++) {
+            string memory code = string(codesRegistered[i]);
+            balance += codeBalances[bytes(code)];
+        }
+        return balance;
+    }
+
+    function getRefContract() public view returns (address) {
+        return address(referralContract);
     }
 }

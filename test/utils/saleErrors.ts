@@ -13,11 +13,13 @@ export const customError = {
   paymentOutsideMinMaxAmounts: 'PaymentOutsideMinMaxAmounts',
   outsideSaleTime: 'OutsideSaleTime',
   SaleNotEnded: 'SaleNotEnded',
-  finishReverral: 'FinishReverral',
+  FinishReferral: 'FinishReferral',
   saleGoalReached: 'SaleGoalReached',
   cantRefund: 'CantRefund',
   nothingToRefund: 'NothingToRefund',
   notFinished: 'NotFinished',
   noDeposit: 'NoDeposit',
-  alreadyClaimed: 'AlreadyClaimed'
+  alreadyClaimed: 'AlreadyClaimed',
+  SaleDurationMustBeLessThanWeek: 'SaleDurationMustBeLessThanWeek',
+  AlreadyFinalizedRef: 'AlreadyFinalizedRef'
 };

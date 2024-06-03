@@ -47,6 +47,11 @@
   },
   {
     "inputs": [],
+    "name": "AlreadyFinalizedRef",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "CantAcceptERC20",
     "type": "error"
   },
@@ -62,7 +67,7 @@
   },
   {
     "inputs": [],
-    "name": "FinishReverral",
+    "name": "FinishReferral",
     "type": "error"
   },
   {
@@ -130,6 +135,11 @@
   {
     "inputs": [],
     "name": "ReentrancyGuardReentrantCall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SaleDurationMustBeLessThanWeek",
     "type": "error"
   },
   {

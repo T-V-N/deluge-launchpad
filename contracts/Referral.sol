@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract ReferralContract is ReentrancyGuard, Ownable {
     modifier codeExists(string memory code) {
-        if (referralCodes[code].owner != address(0)) {
+        if (referralCodes[code].owner == address(0)) {
             revert CodeDoesntExist();
         }
         _;
@@ -46,7 +46,9 @@ contract ReferralContract is ReentrancyGuard, Ownable {
     event ReferralCodeDeleted(string code, address owner);
 
     constructor(address _usdt, address _usdc, address _dai, uint256 _fee, address _treasury) Ownable(msg.sender) {
-        require(_usdt != address(0) && _usdc != address(0) && _dai != address(0));
+        if (_usdt == address(0) || _usdc == address(0) || _dai == address(0)) {
+            revert WrongERC20Address();
+        }
 
         USDT = IERC20(_usdt);
         USDC = IERC20(_usdc);
@@ -57,7 +59,12 @@ contract ReferralContract is ReentrancyGuard, Ownable {
 
     error CodeAlreadyExists();
     error CodeDoesntExist();
+    error NothingToClaim();
     error PayForCreation();
+    error CodeDoesntBelongToCaller();
+    error AlreadyUnlocked();
+    error ShouldProvideValueForUnlock();
+    error WrongERC20Address();
 
     function _createCode(string memory code) private {
         if (referralCodes[code].owner != address(0)) {
@@ -87,6 +94,11 @@ contract ReferralContract is ReentrancyGuard, Ownable {
         uint256 balanceUSDT = referralCodes[code].balanceUSDT;
         uint256 balanceUSDC = referralCodes[code].balanceUSDC;
         uint256 balanceDAI = referralCodes[code].balanceDAI;
+
+        if (balanceNative == 0 && balanceUSDT == 0 && balanceUSDC == 0 && balanceDAI == 0) {
+            revert NothingToClaim();
+        }
+
         address owner = referralCodes[code].owner;
 
         if (balanceNative > 0) {
@@ -114,7 +126,9 @@ contract ReferralContract is ReentrancyGuard, Ownable {
     }
 
     function addRegisteredFunds(string memory code, uint256 amountNative, uint256 amountUSDT, uint256 amountUSDC, uint256 amountDAI) external nonReentrant codeExists(code) {
-        require(!referralCodes[code].sources[msg.sender].unlocked, "already unlocked");
+        if (referralCodes[code].sources[msg.sender].unlocked) {
+            revert AlreadyUnlocked();
+        }
 
         if (!isSource[msg.sender]) {
             isSource[msg.sender] = true;
@@ -131,7 +145,9 @@ contract ReferralContract is ReentrancyGuard, Ownable {
     }
 
     function removeRegisteredFunds(string memory code, uint256 amountNative, uint256 amountUSDT, uint256 amountUSDC, uint256 amountDAI) external codeExists(code) {
-        require(!referralCodes[code].sources[msg.sender].unlocked, "already unlocked");
+        if (referralCodes[code].sources[msg.sender].unlocked) {
+            revert AlreadyUnlocked();
+        }
 
         referralCodes[code].sources[msg.sender].registeredNative -= amountNative;
         referralCodes[code].sources[msg.sender].registeredUSDT -= amountUSDT;
@@ -142,7 +158,9 @@ contract ReferralContract is ReentrancyGuard, Ownable {
     }
 
     function unlockRegisteredFunds(string memory code) external payable codeExists(code) {
-        require(!referralCodes[code].sources[msg.sender].unlocked, "already unlocked");
+        if (referralCodes[code].sources[msg.sender].unlocked) {
+            revert AlreadyUnlocked();
+        }
 
         referralCodes[code].sources[msg.sender].unlocked = true;
         uint256 balanceNative = referralCodes[code].sources[msg.sender].registeredNative;
@@ -151,12 +169,12 @@ contract ReferralContract is ReentrancyGuard, Ownable {
         uint256 balanceDAI = referralCodes[code].sources[msg.sender].registeredDAI;
 
         if (balanceNative > 0) {
-            require(msg.value == balanceNative, "cant unlock without providing native token");
             referralCodes[code].balanceNative += balanceNative;
         }
 
         if (balanceUSDT > 0) {
             USDT.transferFrom(msg.sender, address(this), balanceUSDT);
+
             referralCodes[code].balanceUSDT += balanceUSDT;
         }
 
@@ -172,7 +190,9 @@ contract ReferralContract is ReentrancyGuard, Ownable {
     }
 
     function claimCode(string memory code) external codeExists(code) {
-        require(referralCodes[code].owner == msg.sender, "can only unlock owned codes");
+        if (referralCodes[code].owner != msg.sender) {
+            revert CodeDoesntBelongToCaller();
+        }
 
         _transferCode(code);
 
@@ -180,5 +200,13 @@ contract ReferralContract is ReentrancyGuard, Ownable {
         referralCodes[code].balanceUSDT = 0;
         referralCodes[code].balanceUSDC = 0;
         referralCodes[code].balanceDAI = 0;
+    }
+
+    function codeExist(string memory code) external view returns (bool) {
+        if (referralCodes[code].owner != address(0)) {
+            return true;
+        }
+
+        return false;
     }
 }

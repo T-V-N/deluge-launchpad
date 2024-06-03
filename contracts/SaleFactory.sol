@@ -22,12 +22,12 @@ contract SaleContractFactory is Ownable {
 
     bool public initialized = false;
 
-    constructor(address _locker, uint256 _saleFee, uint256 _raiseFee, address _treasury) Ownable(msg.sender) {
+    constructor(address _locker, uint256 _saleFee, uint256 _raiseFee, address _treasury, address _referralContract) Ownable(msg.sender) {
         // if (_saleFee < 10 ** 15 || _raiseFee < 10 ** 15) {
         //     revert FeeTooLow();
         // }
 
-        if (_locker == address(0) || _treasury == address(0)) {
+        if (_locker == address(0) || _treasury == address(0) || _referralContract == address(0)) {
             revert ProvideLockerAndTreasury();
         }
 
@@ -35,6 +35,7 @@ contract SaleContractFactory is Ownable {
         raiseFee = _raiseFee;
         saleFee = _saleFee;
         treasury = _treasury;
+        referralContract = _referralContract;
     }
 
     function setSaleFee(uint256 _saleFee) external onlyOwner {

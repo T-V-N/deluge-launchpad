@@ -33,13 +33,15 @@ contract Sale is Ownable, ReentrancyGuard {
     error PaymentOutsideMinMaxAmounts();
     error OutsideSaleTime();
     error SaleNotEnded();
-    error FinishReverral();
+    error FinishReferral();
     error SaleGoalReached();
     error CantRefund();
     error NothingToRefund();
     error NotFinished();
     error NoDeposit();
     error AlreadyClaimed();
+    error AlreadyFinalizedRef();
+    error SaleDurationMustBeLessThanWeek();
 
     // Deps
     IERC20 public saleToken;
@@ -76,6 +78,7 @@ contract Sale is Ownable, ReentrancyGuard {
     IReferralModule referralModule;
     bool public referralEnabled;
     bool refshareSent;
+    uint256 refSharePt = 25;
 
     event TokensPurchased(address indexed buyer, uint256 amountSpent);
     event TokensClaimed(address indexed claimer, uint256 tokensClaimed);
@@ -151,6 +154,10 @@ contract Sale is Ownable, ReentrancyGuard {
             revert TooSmallLockPeriod();
         }
 
+        if (endTime - startTime > 7 days) {
+            revert SaleDurationMustBeLessThanWeek();
+        }
+
         initialized = true;
 
         startTime = _startTime;
@@ -208,7 +215,7 @@ contract Sale is Ownable, ReentrancyGuard {
         }
 
         if (referralEnabled && bytes(refCode).length != 0) {
-            referralModule.processReferralCode(refCode, _amount);
+            referralModule.processReferralCode(refCode, (((_amount * raiseFee) / 100) * refSharePt) / 100);
         }
 
         totalRaised += _amount;
@@ -218,16 +225,14 @@ contract Sale is Ownable, ReentrancyGuard {
     }
 
     function finalizeRef(uint256 count) external onlyOwner {
-        if (!refshareSent) {
-            if (acceptsNativeToken) {
-                payable(address(referralModule)).transfer(referralModule.getRefshareBalance());
-            } else {
-                paymentToken.approve(address(referralModule), referralModule.getRefshareBalance());
-            }
-
-            refshareSent = true;
+        if (referralModule.isFinalized()) {
+            revert AlreadyFinalizedRef();
         }
+
         if (acceptsNativeToken) {
+            referralModule.finalizeReferralCodes{value: referralModule.getRefshareBalanceFor(count)}(count);
+        } else {
+            paymentToken.approve(address(referralModule), referralModule.getRefshareBalanceFor(count));
             referralModule.finalizeReferralCodes(count);
         }
     }
@@ -238,7 +243,7 @@ contract Sale is Ownable, ReentrancyGuard {
         }
 
         if (referralEnabled && !referralModule.isFinalized()) {
-            revert FinishReverral();
+            revert FinishReferral();
         }
 
         if (totalRaised >= softCap) {
@@ -257,7 +262,7 @@ contract Sale is Ownable, ReentrancyGuard {
 
                 locker.lockTokens{value: msg.value}(address(lpToken), lpTokensAmount, lockPeriod, owner());
 
-                payable(treasury).transfer((totalRaised * raiseFee) / 100);
+                payable(treasury).transfer((totalRaised * raiseFee) / 100 - referralModule.getRefshareBalance());
 
                 payable(owner()).transfer(address(this).balance);
 
