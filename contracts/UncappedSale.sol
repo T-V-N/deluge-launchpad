@@ -41,6 +41,7 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     error AlreadyClaimed();
     error SaleDurationMustBeLessThanWeek();
     error AlreadyFinalizedRef();
+    error SaleMustStartInOneWeek();
 
     // Deps
     IERC20 public saleToken;
@@ -156,6 +157,10 @@ contract UncappedSale is Ownable, ReentrancyGuard {
 
         if (endTime - startTime > 7 days) {
             revert SaleDurationMustBeLessThanWeek();
+        }
+
+        if (_startTime - block.timestamp > 7 days) {
+            revert SaleMustStartInOneWeek();
         }
 
         initialized = true;

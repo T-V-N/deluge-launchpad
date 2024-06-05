@@ -164,9 +164,9 @@ contract Sale is Ownable, ReentrancyGuard {
             revert SaleDurationMustBeLessThanWeek();
         }
 
-        // if (_startTime - block.timestamp > 7 days) {
-        //     revert SaleMustStartInOneWeek();
-        // }
+        if (_startTime - block.timestamp > 7 days) {
+            revert SaleMustStartInOneWeek();
+        }
 
         initialized = true;
 
