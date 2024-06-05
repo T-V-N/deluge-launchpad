@@ -1,38 +1,47 @@
 import { assert, expect } from "chai";
 import hre from "hardhat";
-import { ethers } from "ethers";
+import { ethers } from "hardhat";
 import { ERC20Token } from "../typechain-types/contracts/ERC20.sol";
 import { Sale } from "../typechain-types/contracts/Sale";
-import { SaleContractFactory } from "../typechain-types/contracts/Factory.sol";
+import { SaleContractFactory } from "../typechain-types";
 import { BSCPancakeswapV2Locker } from "../typechain-types";
 import { ReferralContract } from "../typechain-types";
 import { ReferralModule__factory } from "../typechain-types";
+import { UniswapV2Deployer } from "./utils/Uniswap";
 
 import { params } from "../utils/common";
 import { customError } from "./utils/saleErrors";
+import { HardhatEthersSigner, SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { getBlockTime } from "./utils/getBlockTime";
 
 const eth1 = hre.ethers.parseEther("1")
 
-async function getBlockTime() {
-  const blockNum = await hre.ethers.provider.getBlockNumber();
-  const block = await hre.ethers.provider.getBlock(blockNum);
-  const ts = block?.timestamp || (Date.now() / 1000)
-
-  return ts
-}
-
 describe("Native Launch tests", async function () {
-  let deployer: ethers.Signer, saler: ethers.Signer, depositor1: ethers.Signer, depositor2: ethers.Signer, depositor3: ethers.Signer;
+  let deployer: SignerWithAddress, saler: SignerWithAddress, depositor1: SignerWithAddress, depositor2: SignerWithAddress, depositor3: SignerWithAddress, signer: SignerWithAddress;
   let sale: Sale, factory: SaleContractFactory, saleToken: ERC20Token, locker: BSCPancakeswapV2Locker;
   let refContract: ReferralContract, moduleFactory: ReferralModule__factory, usdt: ERC20Token, usdc: ERC20Token, dai: ERC20Token;
 
-  let ts: number;
+  let ts: bigint;
 
   beforeEach(async function () {
-    [deployer, saler, depositor1, depositor2, depositor3] = await hre.ethers.getSigners();
+    [deployer, saler, depositor1, depositor2, depositor3, signer] = await ethers.getSigners();
 
     const lockerF = await hre.ethers.getContractFactory("BSCPancakeswapV2Locker");
     locker = await lockerF.deploy();
+
+    const uniswap = new UniswapV2Deployer();
+    const {
+      uniFactory,
+      router,
+    } = await uniswap.deploy(signer);
+
+    let uniRouterAddress = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
+    let uniFactoryAddress = '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73';
+
+    if (hre.network.name == 'hardhat') {
+      uniRouterAddress = await router.getAddress();
+      uniFactoryAddress = await uniFactory.getAddress();
+    }
 
     const saleTokenF = await hre.ethers.getContractFactory("ERC20Token", saler);
     saleToken = await saleTokenF.deploy("SALETOKEN");
@@ -46,9 +55,9 @@ describe("Native Launch tests", async function () {
     moduleFactory = await hre.ethers.getContractFactory("ReferralModule");
 
     const launchF = await hre.ethers.getContractFactory("SaleContractFactory", deployer);
-    factory = await launchF.deploy(locker.getAddress(), params.fee, params.raiseFee, params.treasury, refContract)
+    factory = await launchF.deploy(locker.getAddress(), params.fee, params.raiseFee, params.treasury, refContract);
 
-    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), "0x0000000000000000000000000000000000000000", false, [], { value: params.fee });
+    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), "0x0000000000000000000000000000000000000000", false, [], uniFactoryAddress, uniRouterAddress, { value: params.fee });
     const filter = factory.filters.SaleContractCreated;
     const events = await factory.queryFilter(filter, -1)
     const event = events[0]
@@ -60,11 +69,10 @@ describe("Native Launch tests", async function () {
   });
 
   it("Successfull native token sale happy path", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
-
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(
@@ -121,8 +129,8 @@ describe("Native Launch tests", async function () {
   });
 
   it("should allow whitelisted addresses to buy tokens", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
 
@@ -155,8 +163,8 @@ describe("Native Launch tests", async function () {
   });
 
   it("should revert when non-whitelisted address tries to buy tokens", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
 
@@ -185,8 +193,8 @@ describe("Native Launch tests", async function () {
 
   it("should allow native token purchases when sale is active", async function () {
     const purchaseAmount = 1_000n;
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
 
@@ -203,8 +211,8 @@ describe("Native Launch tests", async function () {
   });
 
   it("should send ETH fee to the treasury on native token sale", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
 
@@ -230,8 +238,8 @@ describe("Native Launch tests", async function () {
 
 
   it("should reject purchases below the minimum amount", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     const minPurchase = hre.ethers.parseEther("0.01")
 
@@ -253,7 +261,7 @@ describe("Native Launch tests", async function () {
 
     await refModule.init(sale);
 
-    await sale.connect(saler).initializeSale(ts - 3600, ts + 3600, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(ts - 3600n, ts + 3600n, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
     await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 2 hours forward
     await hre.ethers.provider.send("evm_mine");
 
@@ -269,7 +277,7 @@ describe("Native Launch tests", async function () {
 
     await refModule.init(sale);
 
-    await sale.connect(saler).initializeSale(ts, ts + 7200, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(ts, ts + 7200n, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
     const depositAmount = 100;
     await sale.connect(depositor1).buyTokensWithNative("", {
       value: depositAmount
@@ -284,8 +292,8 @@ describe("Native Launch tests", async function () {
   });
 
   it("should allow claiming of tokens after the sale is finalized", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
 
     await refModule.init(sale);
@@ -330,8 +338,8 @@ describe("Native Launch tests", async function () {
 
 
   it("should prevent unauthorized users from initializing the sale", async function () {
-    const startTime = ts - 100;
-    const endTime = startTime + 10;
+    const startTime = ts - 100n;
+    const endTime = startTime + 10n;
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
 
     await refModule.init(sale);
@@ -341,8 +349,8 @@ describe("Native Launch tests", async function () {
 
 
   it("should correctly calculate raised amount and refund excess if purchase exceeds hard cap", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
     const depositAmount = ethers.parseEther("500"); // close to hard cap
     const excessAmount = ethers.parseEther("100");
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
@@ -364,8 +372,8 @@ describe("Native Launch tests", async function () {
 
 
   it("should reject token claims before sale finalization", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
     const depositAmount = hre.ethers.parseEther("100");
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
 
@@ -380,8 +388,8 @@ describe("Native Launch tests", async function () {
   });
 
   it("should prevent refunding to non-contributors and double refunding", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
     const depositAmount = hre.ethers.parseEther("1");
     const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
 

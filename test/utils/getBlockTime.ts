@@ -5,5 +5,5 @@ export async function getBlockTime() {
   const block = await hre.ethers.provider.getBlock(blockNum);
   const ts = block?.timestamp || (Date.now() / 1000)
 
-  return BigInt(ts)
+  return BigInt(ts);
 }

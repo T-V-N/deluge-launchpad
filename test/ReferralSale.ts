@@ -3,31 +3,41 @@ import hre from "hardhat";
 import { ethers } from "ethers";
 import { ERC20Token } from "../typechain-types/contracts/ERC20.sol";
 import { Sale } from "../typechain-types/contracts/Sale";
-import { SaleContractFactory } from "../typechain-types/contracts/Factory.sol";
+import { SaleContractFactory } from "../typechain-types";
 import { BSCPancakeswapV2Locker, ReferralContract, ReferralModule, ReferralModule__factory } from "../typechain-types";
-
+import { UniswapV2Deployer } from "./utils/Uniswap";
 
 import { params } from "../utils/common";
 import { refError } from "./utils/refErrors";
 import { customError } from "./utils/saleErrors";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { getBlockTime } from "./utils/getBlockTime";
 
-async function getBlockTime() {
-  const blockNum = await hre.ethers.provider.getBlockNumber();
-  const block = await hre.ethers.provider.getBlock(blockNum);
-  const ts = block?.timestamp || (Date.now() / 1000)
 
-  return ts
-}
 
 describe("Native Launch with Referral tests", async function () {
-  let deployer: ethers.Signer, saler: ethers.Signer, depositor1: ethers.Signer, depositor2: ethers.Signer, depositor3: ethers.Signer, refer: ethers.Signer;
+  let deployer: SignerWithAddress, saler: SignerWithAddress, depositor1: SignerWithAddress, depositor2: SignerWithAddress, depositor3: SignerWithAddress, refer: SignerWithAddress, signer: SignerWithAddress;
   let sale: Sale, factory: SaleContractFactory, saleToken: ERC20Token, locker: BSCPancakeswapV2Locker;
   let refModule: ReferralModule, refContract: ReferralContract, moduleFactory: ReferralModule__factory, usdt: ERC20Token, usdc: ERC20Token, dai: ERC20Token;
+  let ts: bigint;
 
-  let ts: number;
+  let uniRouterAddress = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
+  let uniFactoryAddress = '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73';
 
   beforeEach(async function () {
-    [deployer, saler, depositor1, depositor2, depositor3, refer] = await hre.ethers.getSigners();
+    [deployer, saler, depositor1, depositor2, depositor3, refer, signer] = await hre.ethers.getSigners();
+    const uniswap = new UniswapV2Deployer();
+    const {
+      uniFactory,
+      router,
+    } = await uniswap.deploy(signer);
+
+
+    if (hre.network.name == 'hardhat') {
+      uniRouterAddress = await router.getAddress();
+      uniFactoryAddress = await uniFactory.getAddress();
+    }
+
 
     const lockerF = await hre.ethers.getContractFactory("BSCPancakeswapV2Locker");
     locker = await lockerF.deploy();
@@ -47,7 +57,7 @@ describe("Native Launch with Referral tests", async function () {
     const launchF = await hre.ethers.getContractFactory("SaleContractFactory", deployer);
     factory = await launchF.deploy(locker.getAddress(), params.fee, params.raiseFee, params.treasury, refContract)
 
-    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), "0x0000000000000000000000000000000000000000", true, [], { value: params.fee });
+    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), "0x0000000000000000000000000000000000000000", true, [], uniFactoryAddress, uniRouterAddress, { value: params.fee });
     const filter = factory.filters.SaleContractCreated;
     const events = await factory.queryFilter(filter, -1)
     const event = events[0]
@@ -59,9 +69,9 @@ describe("Native Launch with Referral tests", async function () {
     ts = await getBlockTime();
   });
 
-  it("Successfull native token sale happy path", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+  it("Successfull native token sale happy pat with Referral", async function () {
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -114,8 +124,8 @@ describe("Native Launch with Referral tests", async function () {
   });
 
   it("Reward shall be withdrawable", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -195,7 +205,7 @@ describe("Native Launch with Referral tests", async function () {
   });
 
   it("USDT test", async function () {
-    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), usdt.getAddress(), true, [], { value: params.fee });
+    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), usdt.getAddress(), true, [], uniFactoryAddress, uniRouterAddress, { value: params.fee });
     const filter = factory.filters.SaleContractCreated;
     const events = await factory.queryFilter(filter, -1)
     const event = events[0]
@@ -217,8 +227,8 @@ describe("Native Launch with Referral tests", async function () {
     usdt.connect(depositor2).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
     usdt.connect(depositor3).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
 
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -267,7 +277,7 @@ describe("Native Launch with Referral tests", async function () {
   });
 
   it("USDC test", async function () {
-    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), usdc.getAddress(), true, [], { value: params.fee });
+    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), usdc.getAddress(), true, [], uniFactoryAddress, uniRouterAddress, { value: params.fee });
     const filter = factory.filters.SaleContractCreated;
     const events = await factory.queryFilter(filter, -1)
     const event = events[0]
@@ -289,8 +299,8 @@ describe("Native Launch with Referral tests", async function () {
     usdc.connect(depositor2).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
     usdc.connect(depositor3).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
 
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -339,7 +349,7 @@ describe("Native Launch with Referral tests", async function () {
   });
 
   it("DAI test", async function () {
-    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), dai.getAddress(), true, [], { value: params.fee });
+    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), dai.getAddress(), true, [], uniFactoryAddress, uniRouterAddress, { value: params.fee });
     const filter = factory.filters.SaleContractCreated;
     const events = await factory.queryFilter(filter, -1)
     const event = events[0]
@@ -361,8 +371,8 @@ describe("Native Launch with Referral tests", async function () {
     dai.connect(depositor2).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
     dai.connect(depositor3).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
 
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -411,7 +421,7 @@ describe("Native Launch with Referral tests", async function () {
   });
 
   it("Only owner can init and once", async function () {
-    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), usdt.getAddress(), true, [], { value: params.fee });
+    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), usdt.getAddress(), true, [], uniFactoryAddress, uniRouterAddress, { value: params.fee });
     const filter = factory.filters.SaleContractCreated;
     const events = await factory.queryFilter(filter, -1)
     const event = events[0]
@@ -432,8 +442,8 @@ describe("Native Launch with Referral tests", async function () {
   });
 
   it("Partial finalization test", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -483,7 +493,7 @@ describe("Native Launch with Referral tests", async function () {
     const saleTokenF = await hre.ethers.getContractFactory("ERC20Token", saler);
     const randomToken = await saleTokenF.deploy("RND");
 
-    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), randomToken.getAddress(), true, [], { value: params.fee });
+    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), randomToken.getAddress(), true, [], uniFactoryAddress, uniRouterAddress, { value: params.fee });
     const filter = factory.filters.SaleContractCreated;
     const events = await factory.queryFilter(filter, -1)
     const event = events[0]
@@ -505,8 +515,8 @@ describe("Native Launch with Referral tests", async function () {
     randomToken.connect(depositor2).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
     randomToken.connect(depositor3).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
 
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,
@@ -552,8 +562,8 @@ describe("Native Launch with Referral tests", async function () {
   });
 
   it("Owner can delete code", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     await sale.connect(saler).initializeSale(
       startTime,

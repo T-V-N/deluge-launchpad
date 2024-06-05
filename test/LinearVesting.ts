@@ -5,6 +5,7 @@ import { ERC20Token } from "../typechain-types/contracts/ERC20.sol";
 import { VestingContractFactory } from "../typechain-types";
 import { LinearVesting } from "../typechain-types";
 import { customError } from "./utils/vestingErrors";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 async function getBlockTime() {
   const blockNum = await hre.ethers.provider.getBlockNumber();
@@ -15,7 +16,7 @@ async function getBlockTime() {
 }
 
 describe("Linear vesting", async function () {
-  let deployer: ethers.Signer, treasury: ethers.Signer, locker: ethers.Signer, user1: ethers.Signer, user2: ethers.Signer, user3: ethers.Signer;
+  let deployer: SignerWithAddress, treasury: SignerWithAddress, locker: SignerWithAddress, user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress;
   let vestingF: VestingContractFactory, vestedToken: ERC20Token, vesting: LinearVesting;
 
   let ts: bigint;

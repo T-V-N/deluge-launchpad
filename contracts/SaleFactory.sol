@@ -54,7 +54,14 @@ contract SaleContractFactory is Ownable {
         treasury = _treasury;
     }
 
-    function createSaleContract(address _saleTokenAddress, address _paymentTokenAddress, bool _referralEnabled, address[] calldata _whitelist) public payable returns (address sale) {
+    function createSaleContract(
+        address _saleTokenAddress,
+        address _paymentTokenAddress,
+        bool _referralEnabled,
+        address[] calldata _whitelist,
+        address _uniFactory,
+        address _uniRouter
+    ) public payable returns (address sale) {
         if (_saleTokenAddress == address(0)) {
             revert ProvideToken();
         }
@@ -63,7 +70,7 @@ contract SaleContractFactory is Ownable {
             revert PayForCreation();
         }
 
-        Sale saleContract = new Sale(_saleTokenAddress, _paymentTokenAddress, locker, treasury, raiseFee, _whitelist, _referralEnabled);
+        Sale saleContract = new Sale(_saleTokenAddress, _paymentTokenAddress, locker, treasury, raiseFee, _whitelist, _referralEnabled, _uniFactory, _uniRouter);
 
         (bool success, ) = owner().call{value: msg.value}("");
         require(success);

@@ -21,5 +21,6 @@ export const customError = {
   noDeposit: 'NoDeposit',
   alreadyClaimed: 'AlreadyClaimed',
   SaleDurationMustBeLessThanWeek: 'SaleDurationMustBeLessThanWeek',
-  AlreadyFinalizedRef: 'AlreadyFinalizedRef'
+  AlreadyFinalizedRef: 'AlreadyFinalizedRef',
+  SaleMustStartInOneWeek: 'SaleDurationMustBeLessThanWeek'
 };

@@ -1,32 +1,43 @@
 import { expect, assert } from "chai";
 import hre from "hardhat";
-import { ethers } from "ethers";
+import { ethers } from "hardhat";
 import { Sale } from "../typechain-types";
 import { ERC20Token } from "../typechain-types";
-import { SaleContractFactory } from "../typechain-types/contracts/Factory.sol";
+import { SaleContractFactory } from "../typechain-types/";
 import { params } from "../utils/common";
 import { ReferralContract } from "../typechain-types";
 import { ReferralModule__factory } from "../typechain-types";
 import { customError } from "./utils/saleErrors";
-
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { UniswapV2Deployer } from "./utils/Uniswap";
+import { getBlockTime } from "./utils/getBlockTime";
 
 const eth1 = hre.ethers.parseEther("1")
 
-async function getBlockTime() {
-  const blockNum = await hre.ethers.provider.getBlockNumber();
-  const block = await hre.ethers.provider.getBlock(blockNum);
-  const ts = block?.timestamp || (Date.now() / 1000)
 
-  return ts
-}
 
 describe("USDT Launch tests", async function () {
-  let deployer: ethers.Signer, saler: ethers.Signer, depositor1: ethers.Signer, depositor2: ethers.Signer, depositor3: ethers.Signer;
+  let deployer: SignerWithAddress, saler: SignerWithAddress, depositor1: SignerWithAddress, depositor2: SignerWithAddress, depositor3: SignerWithAddress, signer: SignerWithAddress;
   let refContract: ReferralContract, moduleFactory: ReferralModule__factory, sale: Sale, factory: SaleContractFactory, usdt: ERC20Token, usdc: ERC20Token, dai: ERC20Token, saleToken: ERC20Token, locker: any;
-  let ts: number;
+  let ts: bigint;
 
   beforeEach(async function () {
-    [deployer, saler, depositor1, depositor2, depositor3] = await hre.ethers.getSigners();
+    [deployer, saler, depositor1, depositor2, depositor3, signer] = await hre.ethers.getSigners();
+
+    const uniswap = new UniswapV2Deployer();
+    const {
+      uniFactory,
+      router,
+    } = await uniswap.deploy(signer);
+
+    let uniRouterAddress = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
+    let uniFactoryAddress = '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73';
+
+    if (hre.network.name == 'hardhat') {
+      uniRouterAddress = await router.getAddress();
+      uniFactoryAddress = await uniFactory.getAddress();
+    }
+
 
     const lockerF = await hre.ethers.getContractFactory("BSCPancakeswapV2Locker");
     locker = await lockerF.deploy();
@@ -47,9 +58,9 @@ describe("USDT Launch tests", async function () {
     await usdt.transfer(await depositor3.getAddress(), hre.ethers.parseEther("10000"));
 
     const launchF = await hre.ethers.getContractFactory("SaleContractFactory", deployer);
-    factory = await launchF.deploy(locker.getAddress(), params.fee, params.raiseFee, params.treasury)
+    factory = await launchF.deploy(locker.getAddress(), params.fee, params.raiseFee, params.treasury, refContract)
 
-    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), await usdt.getAddress(), false, [], { value: params.fee });
+    await factory.connect(saler).createSaleContract(await saleToken.getAddress(), await usdt.getAddress(), false, [], uniFactoryAddress, uniRouterAddress, { value: params.fee });
 
     const filter = factory.filters.SaleContractCreated;
     const events = await factory.queryFilter(filter, -1)
@@ -65,10 +76,10 @@ describe("USDT Launch tests", async function () {
   });
 
   it("Native buy should revert", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(
@@ -91,10 +102,10 @@ describe("USDT Launch tests", async function () {
   });
 
   it("should revert unaproved buy", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(
@@ -118,10 +129,10 @@ describe("USDT Launch tests", async function () {
   });
 
   it("Successfull usdt + token sale happy path", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(
@@ -157,10 +168,10 @@ describe("USDT Launch tests", async function () {
   });
 
   it("should send USDT fee to the treasury on token sale", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(
@@ -203,10 +214,10 @@ describe("USDT Launch tests", async function () {
 
   it("should allow token purchases when sale is active", async function () {
     const purchaseAmount = 1_000n;
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(startTime, endTime, 50, 100, 100, 100, 2000, 10, 1000, 3600 * 24 * 30, refModule.getAddress());
@@ -220,12 +231,12 @@ describe("USDT Launch tests", async function () {
   });
 
   it("should reject purchases below the minimum amount", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     const minPurchase = hre.ethers.parseEther("0.01")
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(startTime, endTime, 50, eth1, eth1, 500, 1000, minPurchase, minPurchase * 10n, 3600 * 24 * 30, refModule.getAddress());
@@ -234,10 +245,10 @@ describe("USDT Launch tests", async function () {
   });
 
   it("should not allow purchases after sale has ended", async function () {
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
-    await sale.connect(saler).initializeSale(ts - 3600, ts + 3600, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(ts - 3600n, ts + 3600n, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
     await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 2 hours forward
     await hre.ethers.provider.send("evm_mine");
 
@@ -246,13 +257,13 @@ describe("USDT Launch tests", async function () {
 
 
   it("should handle refunds correctly when the soft cap is not reached", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
-    await sale.connect(saler).initializeSale(ts, ts + 7200, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(ts, ts + 7200n, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
     const depositAmount = 100;
     await sale.connect(depositor1).buyTokensWithERC20(depositAmount, "");
 
@@ -265,8 +276,8 @@ describe("USDT Launch tests", async function () {
   });
 
   it("should allow claiming of tokens after the sale is finalized", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
 
     const halfEth = hre.ethers.parseEther("0.5")
     const oneEth = hre.ethers.parseEther("1")
@@ -274,7 +285,7 @@ describe("USDT Launch tests", async function () {
 
     const depositAmount = halfEth;
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     // Setting up the sale and transferring tokens for distribution
@@ -308,10 +319,10 @@ describe("USDT Launch tests", async function () {
 
 
   it("should prevent unauthorized users from initializing the sale", async function () {
-    const startTime = ts - 100;
-    const endTime = startTime + 10;
+    const startTime = ts - 100n;
+    const endTime = startTime + 10n;
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     // Attempt to initialize the sale from a non-owner account
@@ -320,12 +331,12 @@ describe("USDT Launch tests", async function () {
 
 
   it("should correctly calculate raised amount and refund excess if purchase exceeds hard cap", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
     const depositAmount = ethers.parseEther("500"); // close to hard cap
     const excessAmount = ethers.parseEther("100");
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, depositAmount, depositAmount, ethers.parseEther("10"), ethers.parseEther("500"), 3600 * 24 * 30, refModule.getAddress());
@@ -339,11 +350,11 @@ describe("USDT Launch tests", async function () {
 
 
   it("should reject token claims before sale finalization", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
     const depositAmount = hre.ethers.parseEther("100");
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, hre.ethers.parseEther("100"), hre.ethers.parseEther("200"), hre.ethers.parseEther("100"), hre.ethers.parseEther("200"), 3600 * 24 * 30, refModule.getAddress());
@@ -353,11 +364,11 @@ describe("USDT Launch tests", async function () {
   });
 
   it("should prevent refunding to non-contributors and double refunding", async function () {
-    const startTime = ts;
-    const endTime = startTime + 3600;
+    const startTime = await getBlockTime();;
+    const endTime = startTime + 3600n;
     const depositAmount = hre.ethers.parseEther("1");
 
-    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000")
+    const refModule = await moduleFactory.deploy(true, "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", "0x0000000000000000000000000000000000000000", refContract)
     await refModule.init(sale);
 
     await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, hre.ethers.parseEther("2"), hre.ethers.parseEther("10"), hre.ethers.parseEther("1"), hre.ethers.parseEther("2"), 3600 * 24 * 30, refModule.getAddress());

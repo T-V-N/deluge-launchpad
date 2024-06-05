@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ILocker.sol";
 import "./interfaces/IUniswap.sol";
+import "./interfaces/IReferralModule.sol";
 
 contract UncappedSale is Ownable, ReentrancyGuard {
     modifier isWhitelisted() {
@@ -39,13 +40,14 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     error NoDeposit();
     error AlreadyClaimed();
     error SaleDurationMustBeLessThanWeek();
+    error AlreadyFinalizedRef();
 
     // Deps
     IERC20 public saleToken;
     IERC20 public paymentToken;
     ILocker public locker;
-    IUniswapV2Router02 public router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
-    IUniFactory public factory = IUniFactory(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73);
+    IUniswapV2Router02 public router;
+    IUniFactory public factory;
     uint256 public raiseFee;
     address public treasury;
 
@@ -72,22 +74,42 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     uint256 public lockAmount;
     uint256 public lockDelimiter = 1000;
 
+    // ref
+    IReferralModule public referralModule;
+    bool public referralEnabled;
+    bool refshareSent;
+    uint256 refSharePt = 25;
+
     event TokensPurchased(address indexed buyer, uint256 amountSpent);
     event TokensClaimed(address indexed claimer, uint256 tokensClaimed);
     event SaleFinalized(bool success);
     event SaleCreate(address sale);
 
-    constructor(address _saleTokenAddress, address _paymentTokenAddress, address _locker, address _treasury, uint256 _raiseFee, address[] memory _whitelist) Ownable(msg.sender) {
+    constructor(
+        address _saleTokenAddress,
+        address _paymentTokenAddress,
+        address _locker,
+        address _treasury,
+        uint256 _raiseFee,
+        address[] memory _whitelist,
+        bool _referralEnabled,
+        address _uniFactory,
+        address _uniRouter
+    ) Ownable(msg.sender) {
         locker = ILocker(_locker);
         saleToken = IERC20(_saleTokenAddress);
         raiseFee = _raiseFee;
         treasury = _treasury;
+        factory = IUniFactory(_uniFactory);
+        router = IUniswapV2Router02(_uniRouter);
 
         if (_paymentTokenAddress == address(0)) {
             acceptsNativeToken = true;
         } else {
             paymentToken = IERC20(_paymentTokenAddress);
         }
+
+        referralEnabled = _referralEnabled;
 
         if (_whitelist.length != 0) {
             isWhitelist = true;
@@ -109,7 +131,8 @@ contract UncappedSale is Ownable, ReentrancyGuard {
         uint256 _softCap,
         uint256 _minPurchase,
         uint256 _maxPurchase,
-        uint256 _lockPeriod
+        uint256 _lockPeriod,
+        address _referralContract
     ) external onlyOwner {
         if (initialized) {
             revert InitProblem();
@@ -146,20 +169,24 @@ contract UncappedSale is Ownable, ReentrancyGuard {
         tokensForSale = _tokensForSale;
         tokensForLiquidity = (tokensForSale * liquidityPt * (100 - raiseFee)) / 100 / 100;
 
+        if (referralEnabled) {
+            referralModule = IReferralModule(_referralContract);
+        }
+
         saleToken.transferFrom(owner(), address(this), tokensForSale + tokensForLiquidity);
     }
 
     // Function to buy tokens with BNB
-    function buyTokensWithNative() external payable nonReentrant isWhitelisted {
+    function buyTokensWithNative(string memory refCode) external payable nonReentrant isWhitelisted {
         if (!acceptsNativeToken) {
             revert CantAcceptNative();
         }
 
-        processPurchase(msg.sender, msg.value);
+        processPurchase(msg.sender, msg.value, refCode);
     }
 
     // Function to buy tokens with the specified ERC20 token
-    function buyTokensWithERC20(uint256 _amount) external nonReentrant isWhitelisted {
+    function buyTokensWithERC20(uint256 _amount, string memory refCode) external nonReentrant isWhitelisted {
         if (acceptsNativeToken) {
             revert CantAcceptERC20();
         }
@@ -168,16 +195,20 @@ contract UncappedSale is Ownable, ReentrancyGuard {
             revert TransferFailed();
         }
 
-        processPurchase(msg.sender, _amount);
+        processPurchase(msg.sender, _amount, refCode);
     }
 
-    function processPurchase(address _buyer, uint256 _amount) private {
+    function processPurchase(address _buyer, uint256 _amount, string memory refCode) private {
         if (_amount < minPurchase || _amount > maxPurchase) {
             revert PaymentOutsideMinMaxAmounts();
         }
 
         if (block.timestamp < startTime || block.timestamp > endTime) {
             revert OutsideSaleTime();
+        }
+
+        if (referralEnabled && bytes(refCode).length != 0) {
+            referralModule.processReferralCode(refCode, (((_amount * raiseFee) / 100) * refSharePt) / 100);
         }
 
         totalRaised += _amount;
@@ -206,9 +237,26 @@ contract UncappedSale is Ownable, ReentrancyGuard {
         }
     }
 
+    function finalizeRef(uint256 count) external onlyOwner {
+        if (referralModule.isFinalized()) {
+            revert AlreadyFinalizedRef();
+        }
+
+        if (acceptsNativeToken) {
+            referralModule.finalizeReferralCodes{value: referralModule.getRefshareBalanceFor(count)}(count);
+        } else {
+            paymentToken.approve(address(referralModule), referralModule.getRefshareBalanceFor(count));
+            referralModule.finalizeReferralCodes(count);
+        }
+    }
+
     function finalizeSale() external payable onlyOwner nonReentrant {
         if (block.timestamp <= endTime) {
             revert SaleNotEnded();
+        }
+
+        if (referralEnabled && !referralModule.isFinalized()) {
+            revert FinishReferral();
         }
 
         if (totalRaised >= softCap) {
@@ -225,7 +273,11 @@ contract UncappedSale is Ownable, ReentrancyGuard {
 
                 locker.lockTokens{value: msg.value}(address(lpToken), lpTokensAmount, lockPeriod, owner());
 
-                payable(treasury).transfer((totalRaised * raiseFee) / 100);
+                uint256 refShareBalance;
+                if (referralEnabled) {
+                    refShareBalance = referralModule.getRefshareBalance();
+                }
+                payable(treasury).transfer((totalRaised * raiseFee) / 100 - refShareBalance);
 
                 payable(owner()).transfer(address(this).balance);
             } else {

@@ -42,13 +42,14 @@ contract Sale is Ownable, ReentrancyGuard {
     error AlreadyClaimed();
     error AlreadyFinalizedRef();
     error SaleDurationMustBeLessThanWeek();
+    error SaleMustStartInOneWeek();
 
     // Deps
     IERC20 public saleToken;
     IERC20 public paymentToken;
     ILocker public locker;
-    IUniswapV2Router02 public router = IUniswapV2Router02(0x10ED43C718714eb63d5aA57B78B54704E256024E);
-    IUniFactory public factory = IUniFactory(0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73);
+    IUniswapV2Router02 public router;
+    IUniFactory public factory;
     uint256 public raiseFee;
     address public treasury;
 
@@ -75,7 +76,7 @@ contract Sale is Ownable, ReentrancyGuard {
     uint256 public lockPeriod;
 
     // ref
-    IReferralModule referralModule;
+    IReferralModule public referralModule;
     bool public referralEnabled;
     bool refshareSent;
     uint256 refSharePt = 25;
@@ -91,7 +92,9 @@ contract Sale is Ownable, ReentrancyGuard {
         address _treasury,
         uint256 _raiseFee,
         address[] memory _whitelist,
-        bool _referralEnabled
+        bool _referralEnabled,
+        address _uniFactory,
+        address _uniRouter
     ) Ownable(msg.sender) {
         locker = ILocker(_locker);
         saleToken = IERC20(_saleTokenAddress);
@@ -105,6 +108,9 @@ contract Sale is Ownable, ReentrancyGuard {
         } else {
             paymentToken = IERC20(_paymentTokenAddress);
         }
+
+        factory = IUniFactory(_uniFactory);
+        router = IUniswapV2Router02(_uniRouter);
 
         if (_whitelist.length != 0) {
             isWhitelist = true;
@@ -157,6 +163,10 @@ contract Sale is Ownable, ReentrancyGuard {
         if (endTime - startTime > 7 days) {
             revert SaleDurationMustBeLessThanWeek();
         }
+
+        // if (_startTime - block.timestamp > 7 days) {
+        //     revert SaleMustStartInOneWeek();
+        // }
 
         initialized = true;
 
@@ -262,7 +272,11 @@ contract Sale is Ownable, ReentrancyGuard {
 
                 locker.lockTokens{value: msg.value}(address(lpToken), lpTokensAmount, lockPeriod, owner());
 
-                payable(treasury).transfer((totalRaised * raiseFee) / 100 - referralModule.getRefshareBalance());
+                uint256 refShareBalance;
+                if (referralEnabled) {
+                    refShareBalance = referralModule.getRefshareBalance();
+                }
+                payable(treasury).transfer((totalRaised * raiseFee) / 100 - refShareBalance);
 
                 payable(owner()).transfer(address(this).balance);
 

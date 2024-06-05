@@ -7,9 +7,10 @@ import { PeriodicVesting } from "../typechain-types";
 import { customError } from "./utils/vestingErrors";
 
 import { getBlockTime } from "./utils/getBlockTime";
+import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 
 describe("Periodic vesting", async function () {
-  let treasury: ethers.Signer, locker: ethers.Signer, user1: ethers.Signer, user2: ethers.Signer, user3: ethers.Signer;
+  let treasury: SignerWithAddress, locker: SignerWithAddress, user1: SignerWithAddress, user2: SignerWithAddress, user3: SignerWithAddress;
   let vestingF: VestingContractFactory, vestedToken: ERC20Token, vesting: PeriodicVesting;
 
   let ts: bigint;

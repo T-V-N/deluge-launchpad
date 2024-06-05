@@ -36,13 +36,14 @@ contract UncappedSaleContractFactory is Ownable {
 
     address public locker;
     address public treasury;
+    address public referralContract;
 
     event SaleContractCreated(address saleContractAddress, address indexed creator);
 
     uint256 public saleFee;
     uint256 public raiseFee;
 
-    constructor(address _locker, uint256 _saleFee, uint256 _raiseFee, address _treasury) Ownable(msg.sender) {
+    constructor(address _locker, uint256 _saleFee, uint256 _raiseFee, address _treasury, address _referralContract) Ownable(msg.sender) {
         // if (_saleFee < 10 ** 15 || _raiseFee < 10 ** 15) {
         //     revert FeeTooLow();
         // }
@@ -55,6 +56,7 @@ contract UncappedSaleContractFactory is Ownable {
         raiseFee = _raiseFee;
         saleFee = _saleFee;
         treasury = _treasury;
+        referralContract = _referralContract;
     }
 
     function setSaleFee(uint256 _saleFee) external onlyOwner {
@@ -73,7 +75,14 @@ contract UncappedSaleContractFactory is Ownable {
         treasury = _treasury;
     }
 
-    function createUncappedSaleContract(address _saleTokenAddress, address _paymentTokenAddress, address[] memory _whitelist) public payable returns (address sale) {
+    function createUncappedSaleContract(
+        address _saleTokenAddress,
+        address _paymentTokenAddress,
+        bool _referralEnabled,
+        address[] memory _whitelist,
+        address _uniFactory,
+        address _uniRouter
+    ) public payable returns (address sale) {
         if (_saleTokenAddress == address(0)) {
             revert ProvideToken();
         }
@@ -82,7 +91,7 @@ contract UncappedSaleContractFactory is Ownable {
             revert PayForCreation();
         }
 
-        UncappedSale saleContract = new UncappedSale(_saleTokenAddress, _paymentTokenAddress, locker, treasury, raiseFee, _whitelist);
+        UncappedSale saleContract = new UncappedSale(_saleTokenAddress, _paymentTokenAddress, locker, treasury, raiseFee, _whitelist, _referralEnabled, _uniFactory, _uniRouter);
 
         launchesDeployed[msg.sender].push(address(saleContract));
         launches.push(address(saleContract));
