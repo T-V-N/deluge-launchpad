@@ -30,6 +30,21 @@
         "internalType": "address[]",
         "name": "_whitelist",
         "type": "address[]"
+      },
+      {
+        "internalType": "bool",
+        "name": "_referralEnabled",
+        "type": "bool"
+      },
+      {
+        "internalType": "address",
+        "name": "_uniFactory",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_uniRouter",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -38,6 +53,11 @@
   {
     "inputs": [],
     "name": "AlreadyClaimed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AlreadyFinalizedRef",
     "type": "error"
   },
   {
@@ -282,6 +302,11 @@
         "internalType": "uint256",
         "name": "_amount",
         "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "refCode",
+        "type": "string"
       }
     ],
     "name": "buyTokensWithERC20",
@@ -290,7 +315,13 @@
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "refCode",
+        "type": "string"
+      }
+    ],
     "name": "buyTokensWithNative",
     "outputs": [],
     "stateMutability": "payable",
@@ -368,6 +399,19 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "count",
+        "type": "uint256"
+      }
+    ],
+    "name": "finalizeRef",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "finalizeSale",
     "outputs": [],
@@ -441,6 +485,11 @@
         "internalType": "uint256",
         "name": "_lockPeriod",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_referralContract",
+        "type": "address"
       }
     ],
     "name": "initializeSale",
@@ -599,6 +648,32 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "referralEnabled",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "referralModule",
+    "outputs": [
+      {
+        "internalType": "contract IReferralModule",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",

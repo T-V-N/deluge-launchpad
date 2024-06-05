@@ -20,6 +20,11 @@
         "internalType": "address",
         "name": "_treasury",
         "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_referralContract",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -118,9 +123,24 @@
         "type": "address"
       },
       {
+        "internalType": "bool",
+        "name": "_referralEnabled",
+        "type": "bool"
+      },
+      {
         "internalType": "address[]",
         "name": "_whitelist",
         "type": "address[]"
+      },
+      {
+        "internalType": "address",
+        "name": "_uniFactory",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_uniRouter",
+        "type": "address"
       }
     ],
     "name": "createUncappedSaleContract",
@@ -230,6 +250,19 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "referralContract",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",

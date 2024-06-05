@@ -131,6 +131,16 @@
         "internalType": "address[]",
         "name": "_whitelist",
         "type": "address[]"
+      },
+      {
+        "internalType": "address",
+        "name": "_uniFactory",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_uniRouter",
+        "type": "address"
       }
     ],
     "name": "createSaleContract",
