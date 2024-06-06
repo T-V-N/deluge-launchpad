@@ -1,0 +1,70 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "ModuleAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "Creator",
+        "type": "address"
+      }
+    ],
+    "name": "ReferralModuleContractCreated",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "_acceptsNativeToken",
+        "type": "bool"
+      },
+      {
+        "internalType": "address",
+        "name": "_paymentToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_USDT",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_USDC",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_DAI",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_referralContract",
+        "type": "address"
+      }
+    ],
+    "name": "createReferralModule",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "sale",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]

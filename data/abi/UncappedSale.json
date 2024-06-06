@@ -159,6 +159,11 @@
   },
   {
     "inputs": [],
+    "name": "SaleMustStartInOneWeek",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "SaleNotEnded",
     "type": "error"
   },
