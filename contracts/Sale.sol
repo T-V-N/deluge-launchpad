@@ -38,6 +38,8 @@ contract Sale is Ownable, ReentrancyGuard {
     error CantRefund();
     error NothingToRefund();
     error NotFinished();
+    error AlreadyFinished();
+
     error NoDeposit();
     error AlreadyClaimed();
     error AlreadyFinalizedRef();
@@ -332,6 +334,15 @@ contract Sale is Ownable, ReentrancyGuard {
 
         totalRaised -= contributions[msg.sender];
         contributions[msg.sender] = 0;
+    }
+
+    // extends lock period by _lockPeriod if sale is not finished
+    function extendLock(uint256 _lockPeriod) external onlyOwner {
+        if (finished) {
+            revert AlreadyFinished();
+        }
+
+        lockPeriod += _lockPeriod;
     }
 
     function claim() external nonReentrant {

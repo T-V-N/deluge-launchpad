@@ -37,6 +37,7 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     error CantRefund();
     error NothingToRefund();
     error NotFinished();
+    error AlreadyFinished();
     error NoDeposit();
     error AlreadyClaimed();
     error SaleDurationMustBeLessThanWeek();
@@ -240,6 +241,15 @@ contract UncappedSale is Ownable, ReentrancyGuard {
                 return tokensForSale / totalRaised;
             }
         }
+    }
+
+    // extends lock period by _lockPeriod if sale is not finished
+    function extendLock(uint256 _lockPeriod) external onlyOwner {
+        if (finished) {
+            revert AlreadyFinished();
+        }
+
+        lockPeriod += _lockPeriod;
     }
 
     function finalizeRef(uint256 count) external onlyOwner {
