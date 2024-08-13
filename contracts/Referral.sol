@@ -80,14 +80,14 @@ contract ReferralContract is ReentrancyGuard, Ownable {
         _createCode(code);
     }
 
-    function createReferralCode(string memory code) external payable nonReentrant {
-        if (msg.value < fee) {
-            revert PayForCreation();
-        }
-        payable(treasury).transfer(msg.value);
+    // function createReferralCode(string memory code) external payable nonReentrant {
+    //     if (msg.value < fee) {
+    //         revert PayForCreation();
+    //     }
+    //     payable(treasury).transfer(msg.value);
 
-        _createCode(code);
-    }
+    //     _createCode(code);
+    // }
 
     function _transferCode(string memory code) private {
         uint256 balanceNative = referralCodes[code].balanceNative;
