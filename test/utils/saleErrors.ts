@@ -2,6 +2,8 @@ export const customError = {
   NotWhitelisted: "NotWhitelisted",
   InitProblem: "InitProblem",
   WrongSaleDate: "WrongSaleDate",
+  TokenSupplyOutOfRange: "TokenSupplyOutOfRange",
+  EthReserveOutOfRange: "EthReserveOutOfRange",
   WrongLiquidityPt: "WrongLiquidityPt",
   SoftCapShouldBeLessThanHardCap: "SoftCapShouldBeLessThanHardCap",
   MinPurchaseShouldBeLessThanMaxPurchase:
@@ -22,6 +24,6 @@ export const customError = {
   alreadyClaimed: "AlreadyClaimed",
   SaleDurationMustBeLessThanWeek: "SaleDurationMustBeLessThanWeek",
   AlreadyFinalizedRef: "AlreadyFinalizedRef",
-  SaleMustStartInOneWeek: "SaleDurationMustBeLessThanWeek",
+  SaleMustStartInOneWeek: "SaleMustStartInOneWeek",
   OwnableUnauthorizedAccount: "OwnableUnauthorizedAccount",
 };

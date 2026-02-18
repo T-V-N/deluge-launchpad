@@ -74,7 +74,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, params.salePrice, params.liqPrice, params.soft, params.hard, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.hard, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale actives after init");
 
     await expect(sale.connect(depositor1).buyTokensWithNative("", { value: 2_000n })).to.be.revertedWithCustomError(sale, customError.cantAcceptNative);
@@ -87,7 +87,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, params.salePrice, params.liqPrice, params.soft, params.hard, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.hard, params.min, params.max, params.minLock, refModule.getAddress());
     await usdt.connect(depositor1).approve(await sale.getAddress(), 0)
 
     await expect(sale.connect(depositor1).buyTokensWithERC20(2000, ""))
@@ -101,7 +101,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, params.salePrice, params.liqPrice, params.soft, params.hard, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.hard, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await sale.connect(depositor1).buyTokensWithERC20(2_000n, "");
@@ -125,7 +125,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, params.salePrice, params.liqPrice, params.soft, params.hard, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.hard, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await sale.connect(depositor1).buyTokensWithERC20(2_000n, "");
@@ -157,7 +157,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, 100, 100, 100, 2000, 10, 1000, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, 100, 2000, 10, 1000, 3600 * 24 * 30, refModule.getAddress());
 
     await expect(sale.connect(depositor1).buyTokensWithERC20(purchaseAmount, "")).to.changeTokenBalance(ethers, usdt, depositor1, -purchaseAmount);
     await expect(sale.connect(depositor1).buyTokensWithERC20(purchaseAmount, "")).to.changeTokenBalance(ethers, usdt, sale, purchaseAmount);
@@ -175,7 +175,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, eth1, eth1, 500, 1000, minPurchase, minPurchase * 10n, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, 500, 1000, minPurchase, minPurchase * 10n, 3600 * 24 * 30, refModule.getAddress());
 
     await expect(sale.connect(depositor1).buyTokensWithERC20(ethers.parseEther("0.001"), "")).to.be.revertedWithCustomError(sale, customError.paymentOutsideMinMaxAmounts);
   });
@@ -187,7 +187,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
     await networkHelpers.time.increase(3 * 3600);
 
     await expect(sale.connect(depositor1).buyTokensWithERC20(10, "")).to.be.revertedWithCustomError(sale, customError.outsideSaleTime);
@@ -200,7 +200,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 7200;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, eth1, eth1, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress());
     const depositAmount = 100;
     await sale.connect(depositor1).buyTokensWithERC20(depositAmount, "");
 
@@ -213,7 +213,6 @@ describe("USDT Launch tests", async function () {
   it("should allow claiming of tokens after the sale is finalized", async function () {
     const halfEth = ethers.parseEther("0.5")
     const oneEth = ethers.parseEther("1")
-    const price = 1000n;
     const depositAmount = halfEth;
 
     const refModule = await new ReferralModuleRefundable__factory(saler).deploy(refContract)
@@ -222,18 +221,21 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, price, 1200, halfEth, oneEth, halfEth, oneEth, 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, halfEth, oneEth, halfEth, oneEth, 3600 * 24 * 30, refModule.getAddress());
     await sale.connect(depositor1).buyTokensWithERC20(depositAmount, "");
     await sale.connect(depositor2).buyTokensWithERC20(depositAmount, "");
 
     await networkHelpers.time.increase(3 * 3600);
 
-    await expect(await saleToken.balanceOf(sale)).to.be.equal(ethers.parseEther("1552"))
-    await sale.connect(saler).finalizeSale({ value: 150 });
-    await expect(await saleToken.balanceOf(sale)).to.be.equal(ethers.parseEther("1000"))
+    const tokensForSale = params.tokenSupply * 80n / 100n;
 
-    await expect(sale.connect(depositor1).claim()).to.changeTokenBalance(ethers, saleToken, depositor1, depositAmount * price);
-    await expect(sale.connect(depositor2).claim()).to.changeTokenBalance(ethers, saleToken, depositor2, depositAmount * price);
+    await expect(await saleToken.balanceOf(sale)).to.be.equal(params.tokenSupply)
+    await sale.connect(saler).finalizeSale({ value: 150 });
+    await expect(await saleToken.balanceOf(sale)).to.be.equal(tokensForSale)
+
+    const expectedClaim = depositAmount * tokensForSale / oneEth;
+    await expect(sale.connect(depositor1).claim()).to.changeTokenBalance(ethers, saleToken, depositor1, expectedClaim);
+    await expect(sale.connect(depositor2).claim()).to.changeTokenBalance(ethers, saleToken, depositor2, expectedClaim);
     await expect(await saleToken.balanceOf(sale)).to.be.equal(0)
   });
 
@@ -244,7 +246,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, 50, 100, 200, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress())).to.be.revertedWithCustomError(sale, customError.OwnableUnauthorizedAccount);
+    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, 500, 1000, 10, 200, 3600 * 24 * 30, refModule.getAddress())).to.be.revertedWithCustomError(sale, customError.OwnableUnauthorizedAccount);
   });
 
   it("should correctly calculate raised amount and refund excess if purchase exceeds hard cap", async function () {
@@ -257,7 +259,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, depositAmount, depositAmount, ethersLib.parseEther("10"), ethersLib.parseEther("500"), 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, depositAmount, depositAmount, ethersLib.parseEther("10"), ethersLib.parseEther("500"), 3600 * 24 * 30, refModule.getAddress());
 
     await sale.connect(depositor1).buyTokensWithERC20(depositAmount, "");
 
@@ -273,7 +275,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, ethers.parseEther("100"), ethers.parseEther("200"), ethers.parseEther("100"), ethers.parseEther("200"), 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, ethers.parseEther("100"), ethers.parseEther("200"), ethers.parseEther("100"), ethers.parseEther("200"), 3600 * 24 * 30, refModule.getAddress());
     await sale.connect(depositor1).buyTokensWithERC20(depositAmount, "");
 
     await expect(sale.connect(depositor1).claim()).to.be.revertedWithCustomError(sale, customError.notFinished);
@@ -288,7 +290,7 @@ describe("USDT Launch tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 1;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 50, 1000, 1200, ethers.parseEther("2"), ethers.parseEther("10"), ethers.parseEther("1"), ethers.parseEther("2"), 3600 * 24 * 30, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, ethers.parseEther("2"), ethers.parseEther("10"), ethers.parseEther("1"), ethers.parseEther("2"), 3600 * 24 * 30, refModule.getAddress());
     await sale.connect(depositor1).buyTokensWithERC20(depositAmount, "");
 
     await networkHelpers.time.increase(3 * 3600);

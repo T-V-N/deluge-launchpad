@@ -75,7 +75,7 @@ describe("Uncapped Launch with Referral tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     expect(await refModule.getRefContract()).to.be.equal(await refContract.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
@@ -108,7 +108,7 @@ describe("Uncapped Launch with Referral tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await refContract.connect(refer).createReferralCode("someCode", { value: 100n });
@@ -185,7 +185,7 @@ describe("Uncapped Launch with Referral tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await refContract.connect(refer).createReferralCode("someCode", { value: 100n });
@@ -236,7 +236,7 @@ describe("Uncapped Launch with Referral tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await refContract.connect(refer).createReferralCode("someCode", { value: 100n });
@@ -287,7 +287,7 @@ describe("Uncapped Launch with Referral tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await refContract.connect(refer).createReferralCode("someCode", { value: 100n });
@@ -337,7 +337,7 @@ describe("Uncapped Launch with Referral tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     expect(await refModule.getRefContract()).to.be.equal(await refContract.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
@@ -391,7 +391,7 @@ describe("Uncapped Launch with Referral tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await refContract.connect(refer).createReferralCode("someCode", { value: 100n });
@@ -421,7 +421,7 @@ describe("Uncapped Launch with Referral tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, params.liquidityPt, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await refContract.connect(refer).createReferralCode("someCode", { value: 100n });
@@ -443,31 +443,17 @@ describe("Uncapped Launch with Referral tests", async function () {
   });
 
   it("Can't unlock unlocked source", async function () {
-    await refContract
-      .connect(saler)
-      .createReferralCode("someCode", { value: 100n });
-    await refContract
-      .connect(saler)
-      .addRegisteredFunds("someCode", usdt.getAddress(), 100);
+    await refContract.connect(saler).createReferralCode("someCode", { value: 100n });
+    await refContract.connect(saler).addRegisteredFunds("someCode", usdt.getAddress(), 100);
     await usdt.connect(saler).approve(await refContract.getAddress(), 100);
     await refContract.connect(saler).unlockRegisteredFunds("someCode");
-    await expect(
-      refContract
-        .connect(saler)
-        .addRegisteredFunds("someCode", usdt.getAddress(), 100)
-    ).to.not.be.revert(ethers);
+    await expect(refContract.connect(saler).addRegisteredFunds("someCode", usdt.getAddress(), 100)).to.not.be.revert(ethers);
   });
 
   it("Remove funds", async function () {
-    await refContract
-      .connect(saler)
-      .createReferralCode("someCode", { value: 100n });
-    await refContract
-      .connect(saler)
-      .addRegisteredFunds("someCode", usdt.getAddress(), 100);
-    await refContract
-      .connect(saler)
-      .removeRegisteredFunds("someCode", [usdt.getAddress()], [100]);
+    await refContract.connect(saler).createReferralCode("someCode", { value: 100n });
+    await refContract.connect(saler).addRegisteredFunds("someCode", usdt.getAddress(), 100);
+    await refContract.connect(saler).removeRegisteredFunds("someCode", [usdt.getAddress()], [100]);
   });
 
   it("USDT/DAI/USDC should be defined", async function () {
@@ -477,105 +463,37 @@ describe("Uncapped Launch with Referral tests", async function () {
       params.treasury
     );
 
-    expect(
-      new ReferralContract__factory(saler).deploy(
-        ["0x0000000000000000000000000000000000000000", usdc.getAddress(), dai.getAddress()],
-        params.fee, params.treasury
-      )
-    );
-    expect(
-      new ReferralContract__factory(saler).deploy(
-        [usdt.getAddress(), "0x0000000000000000000000000000000000000000", dai.getAddress()],
-        params.fee, params.treasury
-      )
-    );
-    expect(
-      new ReferralContract__factory(saler).deploy(
-        [usdt.getAddress(), usdc.getAddress(), "0x0000000000000000000000000000000000000000"],
-        params.fee, params.treasury
-      )
-    );
+    expect(new ReferralContract__factory(saler).deploy(["0x0000000000000000000000000000000000000000", usdc.getAddress(), dai.getAddress()], params.fee, params.treasury));
+    expect(new ReferralContract__factory(saler).deploy([usdt.getAddress(), "0x0000000000000000000000000000000000000000", dai.getAddress()], params.fee, params.treasury));
+    expect(new ReferralContract__factory(saler).deploy([usdt.getAddress(), usdc.getAddress(), "0x0000000000000000000000000000000000000000"], params.fee, params.treasury));
   });
 
   it("Can't unlock unlocked source", async function () {
     const refAddress = await refContract.getAddress();
-    await refContract
-      .connect(saler)
-      .createReferralCode("someCode", { value: 100n });
-    await expect(
-      refContract
-        .connect(saler)
-        .addRegisteredFunds("someCode", usdt.getAddress(), 100)
-    )
-      .to.emit(refContract, "FundsAdded")
-      .withArgs("someCode", usdt.getAddress(), 100);
-    await usdt
-      .connect(saler)
-      .approve(
-        refAddress,
-        ethers.parseEther("10000000000000000000000000000000000000")
-      );
-    await expect(
-      refContract.connect(saler).unlockRegisteredFunds("someCode")
-    ).to.changeTokenBalances(ethers, usdt, [refAddress, saler], [100, -100]);
+    await refContract.connect(saler).createReferralCode("someCode", { value: 100n });
+    await expect(refContract.connect(saler).addRegisteredFunds("someCode", usdt.getAddress(), 100)).to.emit(refContract, "FundsAdded").withArgs("someCode", usdt.getAddress(), 100);
+    await usdt.connect(saler).approve(refAddress, ethers.parseEther("10000000000000000000000000000000000000"));
+    await expect(refContract.connect(saler).unlockRegisteredFunds("someCode")).to.changeTokenBalances(ethers, usdt, [refAddress, saler], [100, -100]);
   });
 
   it("remove funds example", async function () {
     const refAddress = await refContract.getAddress();
-    await refContract
-      .connect(saler)
-      .createReferralCode("someCode", { value: 100n });
-    await expect(
-      refContract
-        .connect(saler)
-        .addRegisteredFunds("someCode", usdt.getAddress(), 100)
-    )
-      .to.emit(refContract, "FundsAdded")
-      .withArgs("someCode", usdt.getAddress(), 100);
-    await expect(
-      refContract
-        .connect(saler)
-        .removeRegisteredFunds("someCode", [usdt.getAddress()], [100])
-    ).to.emit(refContract, "FundsRemoved");
-
-    await usdt
-      .connect(saler)
-      .approve(
-        refAddress,
-        ethers.parseEther("10000000000000000000000000000000000000")
-      );
-    await expect(refContract.connect(saler).unlockRegisteredFunds("someCode"))
-      .to.not.be.revert(ethers);
+    await refContract.connect(saler).createReferralCode("someCode", { value: 100n });
+    await expect(refContract.connect(saler).addRegisteredFunds("someCode", usdt.getAddress(), 100)).to.emit(refContract, "FundsAdded").withArgs("someCode", usdt.getAddress(), 100);
+    await expect(refContract.connect(saler).removeRegisteredFunds("someCode", [usdt.getAddress()], [100])).to.emit(refContract, "FundsRemoved");
+    await usdt.connect(saler).approve(refAddress, ethers.parseEther("10000000000000000000000000000000000000"));
+    await expect(refContract.connect(saler).unlockRegisteredFunds("someCode")).to.not.be.revert(ethers);
   });
 
   it("Can't unlock unlocked source", async function () {
     const refAddress = await refContract.getAddress();
-    await refContract
-      .connect(saler)
-      .createReferralCode("someCode", { value: 100n });
-    await refContract
-      .connect(saler)
-      .addRegisteredFunds("someCode", usdt.getAddress(), 100);
-    await refContract
-      .connect(saler)
-      .addRegisteredFunds("someCode", usdc.getAddress(), 100);
-    await refContract
-      .connect(saler)
-      .addRegisteredFunds("someCode", dai.getAddress(), 100);
-    await usdt
-      .connect(saler)
-      .approve(
-        refAddress,
-        ethers.parseEther("10000000000000000000000000000000000000")
-      );
-    await usdc.approve(
-      refAddress,
-      ethers.parseEther("10000000000000000000000000000000000000")
-    );
-    await dai.approve(
-      refAddress,
-      ethers.parseEther("10000000000000000000000000000000000000")
-    );
+    await refContract.connect(saler).createReferralCode("someCode", { value: 100n });
+    await refContract.connect(saler).addRegisteredFunds("someCode", usdt.getAddress(), 100);
+    await refContract.connect(saler).addRegisteredFunds("someCode", usdc.getAddress(), 100);
+    await refContract.connect(saler).addRegisteredFunds("someCode", dai.getAddress(), 100);
+    await usdt.connect(saler).approve(refAddress, ethers.parseEther("10000000000000000000000000000000000000"));
+    await usdc.approve(refAddress, ethers.parseEther("10000000000000000000000000000000000000"));
+    await dai.approve(refAddress, ethers.parseEther("10000000000000000000000000000000000000"));
     await expect(refContract.connect(saler).unlockRegisteredFunds("someCode"))
       .to.emit(usdt, "Transfer")
       .and.emit(usdc, "Transfer")

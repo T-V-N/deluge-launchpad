@@ -123,9 +123,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -195,9 +195,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -237,9 +237,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -273,9 +273,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
-        50,
-        100,
-        100,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         100,
         2000,
         10,
@@ -314,9 +314,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
-        50,
-        100,
-        100,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         10000,
         200000,
         10,
@@ -361,9 +361,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
-        50,
-        eth1,
-        eth1,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         500,
         1000,
         minPurchase,
@@ -397,9 +397,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
-        50,
-        eth1,
-        eth1,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         500,
         1000,
         10,
@@ -430,9 +430,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         startTime + 7200,
-        50,
-        eth1,
-        eth1,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         500,
         1000,
         10,
@@ -465,7 +465,6 @@ describe("Native Launch tests", async function () {
     const endTime = startTime + 3600;
     const halfEth = ethers.parseEther("0.5");
     const oneEth = ethers.parseEther("1");
-    const price = 1000n;
 
     const depositAmount = halfEth;
 
@@ -474,9 +473,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
-        50,
-        price,
-        1200,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         halfEth,
         oneEth,
         halfEth,
@@ -493,27 +492,26 @@ describe("Native Launch tests", async function () {
 
     await networkHelpers.time.increase(3 * 3600);
 
-    await expect(await saleToken.balanceOf(sale)).to.be.equal(
-      ethers.parseEther("1552")
-    );
+    const tokensForSale = params.tokenSupply * 80n / 100n;
+
+    await expect(await saleToken.balanceOf(sale)).to.be.equal(params.tokenSupply);
 
     await sale.connect(saler).finalizeSale({ value: 150 });
 
-    await expect(await saleToken.balanceOf(sale)).to.be.equal(
-      ethers.parseEther("1000")
-    );
+    await expect(await saleToken.balanceOf(sale)).to.be.equal(tokensForSale);
 
+    const expectedClaim = depositAmount * tokensForSale / oneEth;
     await expect(sale.connect(depositor1).claim()).to.changeTokenBalance(
       ethers,
       saleToken,
       depositor1,
-      depositAmount * price
+      expectedClaim
     );
     await expect(sale.connect(depositor2).claim()).to.changeTokenBalance(
       ethers,
       saleToken,
       depositor2,
-      depositAmount * price
+      expectedClaim
     );
     await expect(await saleToken.balanceOf(sale)).to.be.equal(0);
   });
@@ -534,9 +532,9 @@ describe("Native Launch tests", async function () {
         .initializeSale(
           startTime,
           endTime,
-          50,
-          100,
-          200,
+          params.tokenSupply,
+          params.ethReserve,
+        params.liquidityPt,
           500,
           1000,
           10,
@@ -566,9 +564,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
-        50,
-        1000,
-        1200,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         depositAmount,
         depositAmount,
         ethers.parseEther("10"),
@@ -603,9 +601,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
-        50,
-        1000,
-        1200,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         ethers.parseEther("100"),
         ethers.parseEther("200"),
         ethers.parseEther("100"),
@@ -637,9 +635,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
-        50,
-        1000,
-        1200,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         ethers.parseEther("2"),
         ethers.parseEther("10"),
         ethers.parseEther("1"),
@@ -669,8 +667,6 @@ describe("Native Launch tests", async function () {
     );
     await refModule.init(sale);
 
-    const salePrice = 1000n;
-    const liqPrice = 1500n;
     const softCap = ethers.parseEther("1");
     const hardCap = ethers.parseEther("2");
 
@@ -682,9 +678,9 @@ describe("Native Launch tests", async function () {
       .initializeSale(
         startTime,
         endTime,
-        75,
-        salePrice,
-        liqPrice,
+        params.tokenSupply,
+        params.ethReserve,
+        params.liquidityPt,
         softCap,
         hardCap,
         softCap,
@@ -697,14 +693,10 @@ describe("Native Launch tests", async function () {
       .connect(depositor1)
       .buyTokensWithNative("", { value: softCap });
 
-    // Pre-seed the Uniswap pair with skewed ratio before finalize.
-    // This simulates a front-run: someone adds liquidity with a different
-    // price, so when the sale tries addLiquidityETH, the router refunds
-    // the excess ETH back to the sale contract.
     const seedTokenAmount = ethers.parseEther("100");
     const seedEthAmount = ethers.parseEther("0.001");
     await saleToken.connect(saler).approve(await router.getAddress(), seedTokenAmount);
-    // @ts-ignore — BaseContract doesn't have addLiquidityETH typed
+    // @ts-ignore
     await router.connect(saler).addLiquidityETH(
       await saleToken.getAddress(),
       seedTokenAmount,
@@ -717,8 +709,6 @@ describe("Native Launch tests", async function () {
 
     await networkHelpers.time.increase(3 * 3600);
 
-    // Without receive() this would revert because the router sends excess ETH
-    // back to the sale contract after adjusting amounts to match existing reserves.
     await expect(
       sale.connect(saler).finalizeSale({ value: params.lockerFee })
     ).to.not.be.revert(ethers);

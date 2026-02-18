@@ -68,7 +68,7 @@ describe("Uncapped Sale tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await sale.connect(depositor1).buyTokensWithNative("", { value: 2_000n });
@@ -101,7 +101,7 @@ describe("Uncapped Sale tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
 
     await sale.connect(saler).addToWhitelist([depositor1.getAddress(), depositor2.getAddress()]);
     await sale.connect(saler).setWhitelist(true);
@@ -118,7 +118,7 @@ describe("Uncapped Sale tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     await sale.connect(saler).addToWhitelist([depositor1.getAddress(), depositor2.getAddress()]);
     await sale.connect(saler).setWhitelist(true);
 
@@ -130,7 +130,7 @@ describe("Uncapped Sale tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 7200;
     const depositAmount = 100;
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     await sale.connect(depositor1).buyTokensWithNative("", { value: depositAmount });
 
     await networkHelpers.time.increase(3 * 3600);
@@ -142,31 +142,33 @@ describe("Uncapped Sale tests", async function () {
   it("should allow claiming of tokens after the sale is finalized", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
-    const tokensForSale = 1_000_000n;
+    const deposit = 1_000_000n;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, tokensForSale, 1_000_000n, 1_000_000n, 1_000_000n, params.minLock, refModule.getAddress());
-    await sale.connect(depositor1).buyTokensWithNative("", { value: 1_000_000n });
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, deposit, deposit, deposit, params.minLock, refModule.getAddress());
+    await sale.connect(depositor1).buyTokensWithNative("", { value: deposit });
 
     await networkHelpers.time.increase(3 * 3600);
     await sale.connect(saler).finalizeSale({ value: params.lockerFee });
 
-    await expect(sale.connect(depositor1).claim()).to.changeTokenBalance(ethers, saleToken, depositor1, (await sale.getPrice()) * tokensForSale);
+    const price = await sale.getPrice();
+    await expect(sale.connect(depositor1).claim()).to.changeTokenBalance(ethers, saleToken, depositor1, deposit * price);
   });
 
   it("should prevent unauthorized users from initializing the sale", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress())).to.be.revertedWithCustomError(sale, customError.OwnableUnauthorizedAccount);
+    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress())).to.be.revertedWithCustomError(sale, customError.OwnableUnauthorizedAccount);
   });
 
   it("should calculate the correct price per token dynamically", async function () {
-    const tokensForSale = ethers.parseEther("1000");
     const softCap = ethers.parseEther("10");
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, tokensForSale, softCap, softCap, softCap * 10n, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, softCap, softCap, softCap * 10n, params.minLock, refModule.getAddress());
+
+    const tokensForSale = params.tokenSupply * 80n / 100n;
 
     const priceAtSoftCap = await sale.getPrice();
     expect(priceAtSoftCap).to.equal(tokensForSale / softCap);
@@ -183,7 +185,7 @@ describe("Uncapped Sale tests", async function () {
     const endTime = startTime + 3600;
 
     const minPurchase = ethers.parseEther("0.01")
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, minPurchase, minPurchase * 10n, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, minPurchase, minPurchase * 10n, params.minLock, refModule.getAddress());
 
     await expect(sale.connect(depositor1).buyTokensWithNative("", { value: ethers.parseEther("0.001") })).to.be.revertedWithCustomError(sale, customError.paymentOutsideMinMaxAmounts);
   });
@@ -192,7 +194,7 @@ describe("Uncapped Sale tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 360;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     await networkHelpers.time.increase(3600 * 2);
 
     await expect(sale.connect(depositor1).buyTokensWithNative("", { value: params.min })).to.be.revertedWithCustomError(sale, customError.outsideSaleTime);
@@ -202,7 +204,7 @@ describe("Uncapped Sale tests", async function () {
     const startTime = (await networkHelpers.time.latest()) + 2;
     const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), 1_000, 1_000n, ethers.parseEther("1000"), params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, 1_000, 1_000n, ethers.parseEther("1000"), params.minLock, refModule.getAddress());
 
     await sale.connect(depositor1).buyTokensWithNative("", { value: 2_000n });
     await sale.connect(depositor2).buyTokensWithNative("", { value: 4_000n });
@@ -223,7 +225,7 @@ describe("Uncapped Sale tests", async function () {
     const endTime = startTime + 7200;
     const depositAmount = ethers.parseEther("1");
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), ethers.parseEther("10"), ethers.parseEther("1"), ethers.parseEther("1"), params.minLock, refModule.getAddress());
+    await sale.connect(saler).initializeSale(startTime, endTime, params.tokenSupply, params.ethReserve, params.liquidityPt, ethers.parseEther("10"), ethers.parseEther("1"), ethers.parseEther("1"), params.minLock, refModule.getAddress());
     await sale.connect(depositor1).buyTokensWithNative("", { value: depositAmount });
 
     await networkHelpers.time.increase(3 * 3600);

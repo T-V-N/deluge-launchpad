@@ -1,15 +1,14 @@
 export const params = {
-  // locker: "0xfD8951db6a39C3a15715091259db530ff47DAabC", - задеплоил свой локер
-  lockerFee: 150n, //цена за лок ликвы
-  fee: 100n, //комса за создание сейла
-  raiseFee: 8n, //комса за рейз
-  treasury: "0x1CBd3b2770909D4e10f157cABC84C7264073C9Ec", //куда слать комсу
-  soft: 1_000n, //софткап
-  hard: 20_000n, //хардкап
-  min: 100n, //мин инвест
-  max: 10_000n, //макс инвест
-  liquidityPt: 75n, //сколько уходит в ликву
-  salePrice: 10n, //сколько цена продажи
-  liqPrice: 15n, //сколько цена ликвы
-  minLock: 3601n, //минимальный срок лока в секундах
+  lockerFee: 150n,
+  fee: 100n,
+  raiseFee: 8n,
+  treasury: "0x1CBd3b2770909D4e10f157cABC84C7264073C9Ec",
+  soft: 1_000n,
+  hard: 20_000n,
+  min: 100n,
+  max: 10_000n,
+  tokenSupply: 1_000_000_000_000_000_000_000_000n, // 1e24 = 1M tokens (18 dec)
+  ethReserve: 10_000_000_000_000_000_000n,          // 10e18 = 10 ETH
+  liquidityPt: 20n,                                  // 20% to LP, 80% to sale
+  minLock: 3601n,
 }

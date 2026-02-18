@@ -22,6 +22,8 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     error NotWhitelisted();
     error InitProblem();
     error WrongSaleDate();
+    error TokenSupplyOutOfRange();
+    error EthReserveOutOfRange();
     error WrongLiquidityPt();
     error SoftCapShouldBeLessThanHardCap();
     error MinPurchaseShouldBeLessThanMaxPurchase();
@@ -44,6 +46,11 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     error AlreadyFinalizedRef();
     error SaleMustStartInOneWeek();
 
+    uint256 public constant MIN_TOKEN_SUPPLY = 1e24;  // 1M tokens (18 dec)
+    uint256 public constant MAX_TOKEN_SUPPLY = 1e27;  // 1B tokens (18 dec)
+    uint256 public constant MIN_ETH_RESERVE = 10 ether;
+    uint256 public constant MAX_ETH_RESERVE = 100 ether;
+
     // Deps
     IERC20 public saleToken;
     IERC20 public paymentToken;
@@ -59,12 +66,12 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     uint256 public endTime;
     bool public finished;
     uint256 public softCap;
-    uint256 public tokensForSale;
-    uint256 public tokensForLiquidity;
+    uint256 public tokenSupply;
+    uint256 public ethReserve;
+    uint256 public liquidityPt;
     uint256 public minPurchase;
     uint256 public maxPurchase;
     uint256 public totalRaised;
-    uint256 public liquidityPt;
     bool public isWhitelist;
     mapping(address => uint256) public contributions;
     mapping(address => bool) public claimed;
@@ -128,8 +135,9 @@ contract UncappedSale is Ownable, ReentrancyGuard {
     function initializeSale(
         uint256 _startTime,
         uint256 _endTime,
+        uint256 _tokenSupply,
+        uint256 _ethReserve,
         uint256 _liquidityPt,
-        uint256 _tokensForSale,
         uint256 _softCap,
         uint256 _minPurchase,
         uint256 _maxPurchase,
@@ -144,7 +152,15 @@ contract UncappedSale is Ownable, ReentrancyGuard {
             revert WrongSaleDate();
         }
 
-        if (_liquidityPt < 50 || _liquidityPt > 100) {
+        if (_tokenSupply < MIN_TOKEN_SUPPLY || _tokenSupply > MAX_TOKEN_SUPPLY) {
+            revert TokenSupplyOutOfRange();
+        }
+
+        if (_ethReserve < MIN_ETH_RESERVE || _ethReserve > MAX_ETH_RESERVE) {
+            revert EthReserveOutOfRange();
+        }
+
+        if (_liquidityPt == 0 || _liquidityPt > 50) {
             revert WrongLiquidityPt();
         }
 
@@ -156,33 +172,40 @@ contract UncappedSale is Ownable, ReentrancyGuard {
             revert TooSmallLockPeriod();
         }
 
-        if (endTime - startTime > 7 days) {
+        if (_endTime - _startTime > 7 days) {
             revert SaleDurationMustBeLessThanWeek();
         }
 
-        if (_startTime - block.timestamp > 7 days) {
+        if (_startTime > block.timestamp && _startTime - block.timestamp > 7 days) {
             revert SaleMustStartInOneWeek();
         }
 
         initialized = true;
         startTime = _startTime;
         endTime = _endTime;
+        tokenSupply = _tokenSupply;
+        ethReserve = _ethReserve;
         liquidityPt = _liquidityPt;
         softCap = _softCap;
         minPurchase = _minPurchase;
         maxPurchase = _maxPurchase;
         lockPeriod = _lockPeriod;
-        tokensForSale = _tokensForSale;
-        tokensForLiquidity = (tokensForSale * liquidityPt * (100 - raiseFee)) / 100 / 100;
 
         if (referralEnabled) {
             referralModule = IReferralModuleRefundable(_referralContract);
         }
 
-        saleToken.transferFrom(owner(), address(this), tokensForSale + tokensForLiquidity);
+        saleToken.transferFrom(owner(), address(this), _tokenSupply);
     }
 
-    // Function to buy tokens with BNB
+    function getTokensForSale() public view returns (uint256) {
+        return tokenSupply * (100 - liquidityPt) / 100;
+    }
+
+    function getTokensForLiquidity() public view returns (uint256) {
+        return tokenSupply - getTokensForSale();
+    }
+
     function buyTokensWithNative(string memory refCode) external payable nonReentrant isWhitelisted {
         if (!acceptsNativeToken) {
             revert CantAcceptNative();
@@ -191,7 +214,6 @@ contract UncappedSale is Ownable, ReentrancyGuard {
         processPurchase(msg.sender, msg.value, refCode);
     }
 
-    // Function to buy tokens with the specified ERC20 token
     function buyTokensWithERC20(uint256 _amount, string memory refCode) external nonReentrant isWhitelisted {
         if (acceptsNativeToken) {
             revert CantAcceptERC20();
@@ -229,22 +251,15 @@ contract UncappedSale is Ownable, ReentrancyGuard {
             revert InitProblem();
         }
 
-        if (acceptsNativeToken) {
-            if (totalRaised < softCap) {
-                return tokensForSale / softCap;
-            } else {
-                return tokensForSale / totalRaised;
-            }
+        uint256 _tokensForSale = getTokensForSale();
+
+        if (totalRaised < softCap) {
+            return _tokensForSale / softCap;
         } else {
-            if (totalRaised < softCap) {
-                return tokensForSale / softCap;
-            } else {
-                return tokensForSale / totalRaised;
-            }
+            return _tokensForSale / totalRaised;
         }
     }
 
-    // extends lock period by _lockPeriod if sale is not finished
     function extendLock(uint256 _lockPeriod) external onlyOwner {
         if (finished) {
             revert AlreadyFinished();
@@ -276,11 +291,21 @@ contract UncappedSale is Ownable, ReentrancyGuard {
         }
 
         if (totalRaised >= softCap) {
-            if (acceptsNativeToken) {
-                uint256 ethAmount = (totalRaised * (100 - raiseFee)) / 100;
-                saleToken.approve(address(router), tokensForLiquidity);
+            uint256 _tokensForLiquidity = getTokensForLiquidity();
 
-                router.addLiquidityETH{value: (ethAmount * liquidityPt) / 100}(address(saleToken), tokensForLiquidity, 0, 0, address(this), block.timestamp);
+            uint256 refShareBalance;
+            if (referralEnabled) {
+                refShareBalance = referralModule.getRefshareBalance();
+            }
+
+            if (acceptsNativeToken) {
+                uint256 ethAfterFee = (totalRaised * (100 - raiseFee)) / 100;
+                uint256 availableForLP = ethAfterFee - refShareBalance;
+                uint256 ethForLiquidity = ethReserve < availableForLP ? ethReserve : availableForLP;
+
+                saleToken.approve(address(router), _tokensForLiquidity);
+
+                router.addLiquidityETH{value: ethForLiquidity}(address(saleToken), _tokensForLiquidity, 0, 0, address(this), block.timestamp);
 
                 IERC20 lpToken = IERC20(factory.getPair(router.WETH(), address(saleToken)));
                 uint256 lpTokensAmount = lpToken.balanceOf(address(this));
@@ -289,21 +314,18 @@ contract UncappedSale is Ownable, ReentrancyGuard {
 
                 locker.lockTokens{value: msg.value}(address(lpToken), lpTokensAmount, lockPeriod, owner());
 
-                uint256 refShareBalance;
-                if (referralEnabled) {
-                    refShareBalance = referralModule.getRefshareBalance();
-                }
                 payable(treasury).transfer((totalRaised * raiseFee) / 100 - refShareBalance);
 
                 payable(owner()).transfer(address(this).balance);
             } else {
-                uint256 tokenAmountPayment = (totalRaised * (100 - raiseFee)) / 100;
-                uint256 tokenAmountSale = tokensForLiquidity;
+                uint256 paymentAfterFee = (totalRaised * (100 - raiseFee)) / 100;
+                uint256 availableForLP = paymentAfterFee - refShareBalance;
+                uint256 paymentForLiquidity = ethReserve < availableForLP ? ethReserve : availableForLP;
 
-                paymentToken.approve(address(router), tokenAmountPayment);
-                saleToken.approve(address(router), tokenAmountSale);
+                paymentToken.approve(address(router), paymentForLiquidity);
+                saleToken.approve(address(router), _tokensForLiquidity);
 
-                router.addLiquidity(address(paymentToken), address(saleToken), (tokenAmountPayment * liquidityPt) / 100, tokenAmountSale, 0, 0, address(this), block.timestamp);
+                router.addLiquidity(address(paymentToken), address(saleToken), paymentForLiquidity, _tokensForLiquidity, 0, 0, address(this), block.timestamp);
 
                 IERC20 lpToken = IERC20(factory.getPair(address(paymentToken), address(saleToken)));
                 uint256 lpTokensAmount = lpToken.balanceOf(address(this));

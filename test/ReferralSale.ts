@@ -126,9 +126,9 @@ describe("Native Launch with Referral tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -194,9 +194,9 @@ describe("Native Launch with Referral tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -271,12 +271,6 @@ describe("Native Launch with Referral tests", async function () {
   });
 
   it("Admin shall create codes for free", async function () {
-    // await expect(
-    //   refContract.connect(deployer).createReferralCodeAdmin("aaaa", deployer)
-    // )
-    //   .to.emit(refContract, "ReferralCodeCreated")
-    //   .withArgs("aaaa", deployer);
-
     await expect(
       refContract.connect(saler).createReferralCodeAdmin("czxc", saler)
     )
@@ -372,9 +366,9 @@ describe("Native Launch with Referral tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -421,7 +415,8 @@ describe("Native Launch with Referral tests", async function () {
       .connect(saler)
       .initializeSale(
         startTime, endTime,
-        params.liquidityPt, params.salePrice, params.liqPrice,
+        params.tokenSupply, params.ethReserve,
+        params.liquidityPt,
         params.soft, params.hard, params.min, params.max,
         params.minLock, refModule.getAddress()
       );
@@ -453,10 +448,6 @@ describe("Native Launch with Referral tests", async function () {
 
     const treasuryReceived = treasuryBalanceAfter - treasuryBalanceBefore;
 
-    // BUG: native branch subtracts refShareBalance from treasury fee (Sale.sol:282):
-    //   treasury.transfer((totalRaised * raiseFee) / 100 - refShareBalance)
-    // Treasury receives 800 - 200 = 600 instead of the full 800.
-    // Referral cost should come from the owner's share, not treasury's.
     expect(treasuryReceived).to.equal(fullRaiseFee - expectedRefShare,
       "BUG: treasury gets 600 instead of 800 — refshare wrongly subtracted");
     expect(treasuryReceived).to.not.equal(fullRaiseFee,
@@ -534,9 +525,9 @@ describe("Native Launch with Referral tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -646,9 +637,9 @@ describe("Native Launch with Referral tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -741,9 +732,9 @@ describe("Native Launch with Referral tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -855,9 +846,9 @@ describe("Native Launch with Referral tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,
@@ -905,9 +896,9 @@ describe("Native Launch with Referral tests", async function () {
       .initializeSale(
         startTime,
         endTime,
+        params.tokenSupply,
+        params.ethReserve,
         params.liquidityPt,
-        params.salePrice,
-        params.liqPrice,
         params.soft,
         params.hard,
         params.min,

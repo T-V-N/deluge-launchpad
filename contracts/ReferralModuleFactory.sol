@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "../lib/deluge-referral/contracts/ReferralModule.sol";
+import "../lib/deluge-referral/contracts/ReferralModuleRefundable.sol";
 
 // ReferralModuleFactory
 contract ReferralModuleFactory {
@@ -9,8 +9,8 @@ contract ReferralModuleFactory {
 
     event ReferralModuleContractCreated(address ModuleAddress, address Creator);
 
-    function createReferralModule(bool _acceptsNativeToken, address _paymentToken, address _USDT, address _USDC, address _DAI, address _referralContract) public payable returns (address sale) {
-        ReferralModule module = new ReferralModule(_referralContract);
+    function createReferralModule(address _referralContract) public payable returns (address sale) {
+        ReferralModuleRefundable module = new ReferralModuleRefundable(_referralContract);
 
         emit ReferralModuleContractCreated(address(module), msg.sender);
 
