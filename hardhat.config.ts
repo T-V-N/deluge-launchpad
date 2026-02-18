@@ -1,61 +1,62 @@
-import { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
-import { config as dotenvConfig } from 'dotenv';
-import { resolve } from 'path';
-import 'hardhat-abi-exporter';
-import "@nomicfoundation/hardhat-ignition-ethers";
-import 'solidity-coverage'
+import { defineConfig } from "hardhat/config";
+import hardhatToolboxMochaEthers from "@nomicfoundation/hardhat-toolbox-mocha-ethers";
+import hardhatAbiExporter from "@solidstate/hardhat-abi-exporter";
+import hardhatContractSizer from "@solidstate/hardhat-contract-sizer";
+import dotenv from "dotenv";
 
-import '@typechain/hardhat'
-import '@nomicfoundation/hardhat-ethers'
-import '@nomicfoundation/hardhat-chai-matchers'
-import "hardhat-contract-sizer";
+dotenv.config();
 
-const dotenvConfigPath: string = process.env.DOTENV_CONFIG_PATH || './.env';
-dotenvConfig({
-  path: resolve(__dirname, dotenvConfigPath),
-});
-const { DEPLOYER_PRIVATE_KEY, FORK_KEY, QUICKNODE_API } =
-  process.env;
+const { DEPLOYER_PRIVATE_KEY = "", BSC_SCAN_API_KEY = "" } = process.env;
 
-const config: HardhatUserConfig = {
-  solidity: "0.8.24",
-  settings: {
-    optimizer: {
-      enabled: true,
-      runs: 1000,
-    },
-  },
-  gasReporter: {
-    currency: 'USD',
-    gasPrice: 21
+export default defineConfig({
+  plugins: [
+    hardhatToolboxMochaEthers,
+    hardhatAbiExporter,
+    hardhatContractSizer,
+  ],
+  solidity: {
+    compilers: [
+      {
+        version: "0.8.26",
+        settings: {
+          optimizer: { enabled: true, runs: 1000 },
+        },
+      },
+      {
+        version: "0.8.24",
+        settings: {
+          optimizer: { enabled: true, runs: 1000 },
+        },
+      },
+      {
+        version: "0.8.17",
+        settings: {
+          optimizer: { enabled: true, runs: 1000 },
+        },
+      },
+    ],
   },
   networks: {
     bscmainnet: {
+      type: "http",
       url: "https://bsc-dataseed.binance.org/",
       chainId: 56,
-      accounts: [DEPLOYER_PRIVATE_KEY],
+      accounts: DEPLOYER_PRIVATE_KEY ? [DEPLOYER_PRIVATE_KEY] : [],
+    },
+    hardhat: {
+      type: "edr-simulated",
     },
   },
 
-  hardhat: {
-    forking: {
-      url: `https://tiniest-wider-mound.bsc.quiknode.pro/${QUICKNODE_API}/`,
-      accounts: [FORK_KEY],
-    }
-  },
-  abiExporter: {
-    path: './data/abi',
-    flat: true,
-  },
-
   typechain: {
-    outDir: 'typechain-types',
-    target: 'ethers-v6',
+    outDir: "typechain-types",
     alwaysGenerateOverloads: false,
-    externalArtifacts: ['externalArtifacts/*.json'],
-    dontOverrideCompile: false
+    dontOverrideCompile: false,
   },
-};
 
-export default config;
+  verify: {
+    etherscan: {
+      apiKey: BSC_SCAN_API_KEY,
+    },
+  },
+});

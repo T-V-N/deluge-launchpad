@@ -1,58 +1,57 @@
 import { assert, expect } from "chai";
 import hre from "hardhat";
-import { ERC20Token } from "../typechain-types/contracts/ERC20.sol";
-import { UncappedSale } from "../typechain-types/contracts/UncappedSale";
-import { UncappedSaleContractFactory } from "../typechain-types";
-import { BSCPancakeswapV2Locker } from "../typechain-types";
-import { ReferralModule, ReferralModule__factory, ReferralContract } from "../typechain-types";
+import { ERC20Token } from "../typechain-types/contracts/ERC20.sol/index.js";
+import { UncappedSale } from "../typechain-types/contracts/UncappedSale.js";
+import { UncappedSaleContractFactory } from "../typechain-types/index.js";
+import { BSCPancakeswapV2Locker } from "../typechain-types/index.js";
+import {
+  ReferralContract,
+  ReferralContract__factory,
+  ReferralModuleRefundable,
+  ReferralModuleRefundable__factory,
+} from "../lib/deluge-referral/typechain-types/index.js";
 import { Contract } from "ethers";
 
-import { params } from "../utils/common";
+import { params } from "../utils/common.js";
 
-import { customError } from "./utils/saleErrors";
-import { getBlockTime } from "./utils/getBlockTime";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { UniswapV2Deployer } from "./utils/Uniswap";
+import { customError } from "./utils/saleErrors.js";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
+import { UniswapV2Deployer } from "./utils/Uniswap.js";
+
+const { ethers, networkHelpers } = await hre.network.connect();
 
 describe("Uncapped Sale tests", async function () {
-  let deployer: SignerWithAddress, saler: SignerWithAddress, depositor1: SignerWithAddress, depositor2: SignerWithAddress, depositor3: SignerWithAddress, signer: SignerWithAddress;
+  let deployer: HardhatEthersSigner, saler: HardhatEthersSigner, depositor1: HardhatEthersSigner, depositor2: HardhatEthersSigner, depositor3: HardhatEthersSigner, signer: HardhatEthersSigner;
   let sale: UncappedSale, factory: UncappedSaleContractFactory, saleToken: ERC20Token, locker: BSCPancakeswapV2Locker;
-  let ts: bigint;
-  let refModule: ReferralModule, refContract: ReferralContract, moduleFactory: ReferralModule__factory, usdt: ERC20Token, usdc: ERC20Token, dai: ERC20Token;
+  let ts: number;
+  let refModule: ReferralModuleRefundable, refContract: ReferralContract, usdt: ERC20Token, usdc: ERC20Token, dai: ERC20Token;
 
   beforeEach(async function () {
-    [deployer, saler, depositor1, depositor2, depositor3, signer] = await hre.ethers.getSigners();
+    [deployer, saler, depositor1, depositor2, depositor3, signer] = await ethers.getSigners();
     const uniswap = new UniswapV2Deployer();
-    const {
-      uniFactory,
-      router,
-    } = await uniswap.deploy(signer);
+    const { uniFactory, weth9, router } = await uniswap.deploy(signer);
 
-    let uniRouterAddress = '0x10ED43C718714eb63d5aA57B78B54704E256024E';
-    let uniFactoryAddress = '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73';
+    let uniRouterAddress = await router.getAddress();
+    let uniFactoryAddress = await uniFactory.getAddress();
 
-    if (hre.network.name == 'hardhat') {
-      uniRouterAddress = await router.getAddress();
-      uniFactoryAddress = await uniFactory.getAddress();
-    }
-
-    const lockerF = await hre.ethers.getContractFactory("BSCPancakeswapV2Locker");
+    const lockerF = await ethers.getContractFactory("BSCPancakeswapV2Locker");
     locker = await lockerF.deploy();
 
-    const saleTokenF = await hre.ethers.getContractFactory("ERC20Token", saler);
+    const saleTokenF = await ethers.getContractFactory("ERC20Token", saler);
     saleToken = await saleTokenF.deploy("SALETOKEN");
     usdt = await saleTokenF.deploy("USDT");
     usdc = await saleTokenF.deploy("USDC");
     dai = await saleTokenF.deploy("DAI");
 
-    const referralFactory = await hre.ethers.getContractFactory("ReferralContract")
-    refContract = await referralFactory.deploy(await usdt.getAddress(), await usdc.getAddress(), await dai.getAddress(), 100, params.treasury);
+    refContract = await new ReferralContract__factory(saler).deploy(
+      [usdt.getAddress(), usdc.getAddress(), dai.getAddress(), ethers.ZeroAddress],
+      100,
+      params.treasury
+    );
 
-    moduleFactory = await hre.ethers.getContractFactory("ReferralModule");
-    refModule = await moduleFactory.connect(saler).deploy(true, usdt, usdt, usdc, dai, refContract)
+    refModule = await new ReferralModuleRefundable__factory(saler).deploy(refContract);
 
-
-    const launchF = await hre.ethers.getContractFactory("UncappedSaleContractFactory", deployer);
+    const launchF = await ethers.getContractFactory("UncappedSaleContractFactory", deployer);
     factory = await launchF.deploy(locker.getAddress(), params.fee, params.raiseFee, params.treasury, refContract)
 
     await factory.connect(saler).createUncappedSaleContract(await saleToken.getAddress(), "0x0000000000000000000000000000000000000000", false, [], uniFactoryAddress, uniRouterAddress, { value: params.fee });
@@ -60,27 +59,16 @@ describe("Uncapped Sale tests", async function () {
     const launchCount = await factory.totalLaunchesCount();
     const saleAddress = await factory.launches(launchCount - 1n);
 
-    sale = await hre.ethers.getContractAt("UncappedSale", saleAddress)
-    saleToken.connect(saler).approve(await sale.getAddress(), hre.ethers.parseEther("10000000000000000000000000000000000000"))
-    ts = await getBlockTime();
+    sale = await ethers.getContractAt("UncappedSale", saleAddress)
+    await saleToken.connect(saler).approve(await sale.getAddress(), ethers.parseEther("10000000000000000000000000000000000000"))
+    ts = await networkHelpers.time.latest();
   });
 
   it("Successful token sale happy path", async function () {
-    const startTime = await getBlockTime();;
-    const endTime = startTime + 3600n;
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(
-      startTime,
-      endTime,
-      51,
-      100_000_000n,
-      params.soft,
-      params.min,
-      params.max,
-      params.minLock,
-      refModule.getAddress()
-    );
-
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, 100_000_000n, params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     assert(await sale.finished() == false, "Sale active after init");
 
     await sale.connect(depositor1).buyTokensWithNative("", { value: 2_000n });
@@ -88,8 +76,7 @@ describe("Uncapped Sale tests", async function () {
     await sale.connect(depositor3).buyTokensWithNative("", { value: 2_000n });
     await sale.connect(depositor1).buyTokensWithNative("", { value: 4_000n });
 
-    await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 3 hours forward
-    await hre.ethers.provider.send("evm_mine");
+    await networkHelpers.time.increase(3 * 3600);
 
     await sale.connect(saler).finalizeSale({ value: params.lockerFee });
     assert(await sale.finished() == true, "Sale active after finish");
@@ -97,44 +84,25 @@ describe("Uncapped Sale tests", async function () {
 
   it("should allow adding multiple addresses to the whitelist", async function () {
     await expect(sale.connect(saler).addToWhitelist([await depositor1.getAddress(), await depositor2.getAddress()]))
-      .to.not.be.reverted;
-
-    // Check if addresses are actually whitelisted
+      .to.not.be.revert(ethers);
     expect(await sale.whitelist(await depositor1.getAddress())).to.be.true;
     expect(await sale.whitelist(await depositor2.getAddress())).to.be.true;
   });
 
   it("should allow removing addresses from the whitelist", async function () {
-    // First add to the whitelist
     await sale.connect(saler).addToWhitelist([await depositor1.getAddress(), await depositor2.getAddress()]);
-
-    // Then remove from the whitelist
     await expect(sale.connect(saler).removeFromWhitelist([await depositor1.getAddress(), await depositor2.getAddress()]))
-      .to.not.be.reverted;
-
-    // Check if addresses are actually removed
+      .to.not.be.revert(ethers);
     expect(await sale.whitelist(await depositor1.getAddress())).to.be.false;
     expect(await sale.whitelist(await depositor2.getAddress())).to.be.false;
   });
 
   it("should allow whitelisted addresses to buy tokens", async function () {
-    const startTime = await getBlockTime();;
-    const endTime = startTime + 3600n;
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(
-      startTime,
-      endTime,
-      51,
-      hre.ethers.parseEther("1000"),
-      params.soft,
-      params.min,
-      params.max,
-      params.minLock,
-      refModule.getAddress()
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress());
 
-    );
-
-    // Whitelist depositor1 and depositor2
     await sale.connect(saler).addToWhitelist([depositor1.getAddress(), depositor2.getAddress()]);
     await sale.connect(saler).setWhitelist(true);
     await expect(sale.connect(depositor1).buyTokensWithNative("", { value: 100 }))
@@ -147,22 +115,10 @@ describe("Uncapped Sale tests", async function () {
   });
 
   it("should revert when non-whitelisted address tries to buy tokens", async function () {
-    const startTime = await getBlockTime();;
-    const endTime = startTime + 3600n;
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(
-      startTime,
-      endTime,
-      51,
-      hre.ethers.parseEther("1000"),
-      params.soft,
-      params.min,
-      params.max,
-      params.minLock,
-      refModule.getAddress()
-
-    );
-    // Whitelist depositor1 and depositor2, not depositor3
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     await sale.connect(saler).addToWhitelist([depositor1.getAddress(), depositor2.getAddress()]);
     await sale.connect(saler).setWhitelist(true);
 
@@ -171,181 +127,108 @@ describe("Uncapped Sale tests", async function () {
   });
 
   it("should handle refunds correctly when the soft cap is not reached", async function () {
-    const startTime = await getBlockTime();
-    const endTime = startTime + 7200n;  // Longer duration for potential late transactions
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 7200;
     const depositAmount = 100;
-    await sale.connect(saler).initializeSale(
-      startTime,
-      endTime,
-      51,
-      hre.ethers.parseEther("1000"),
-      params.soft,
-      params.min,
-      params.max,
-      params.minLock,
-      refModule.getAddress()
-    );
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress());
     await sale.connect(depositor1).buyTokensWithNative("", { value: depositAmount });
 
-    // Fast forward past end time without reaching soft cap
-    await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 3 hours forward
-    await hre.ethers.provider.send("evm_mine");
+    await networkHelpers.time.increase(3 * 3600);
 
-    await expect(sale.connect(depositor1).refund()).to.changeEtherBalance(depositor1, depositAmount);
+    await expect(sale.connect(depositor1).refund()).to.changeEtherBalance(ethers, depositor1, depositAmount);
     await expect(await sale.contributions(depositor1.getAddress())).to.equal(0);
   });
 
   it("should allow claiming of tokens after the sale is finalized", async function () {
-    const startTime = await getBlockTime();;
-    const endTime = startTime + 3600n;
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 3600;
     const tokensForSale = 1_000_000n;
 
-    await sale.connect(saler).initializeSale(
-      startTime,
-      endTime,
-      51,
-      tokensForSale,
-      1_000_000n,
-      1_000_000n,
-      1_000_000n,
-      params.minLock,
-      refModule.getAddress()
-
-    );
-
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, tokensForSale, 1_000_000n, 1_000_000n, 1_000_000n, params.minLock, refModule.getAddress());
     await sale.connect(depositor1).buyTokensWithNative("", { value: 1_000_000n });
 
-    // Finalizing the sale successfully
-    await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 3 hours forward
-    await hre.ethers.provider.send("evm_mine");
+    await networkHelpers.time.increase(3 * 3600);
     await sale.connect(saler).finalizeSale({ value: params.lockerFee });
 
-    // Claiming tokens
-    await expect(sale.connect(depositor1).claim()).to.changeTokenBalance(saleToken, depositor1, (await sale.getPrice()) * tokensForSale);
+    await expect(sale.connect(depositor1).claim()).to.changeTokenBalance(ethers, saleToken, depositor1, (await sale.getPrice()) * tokensForSale);
   });
 
   it("should prevent unauthorized users from initializing the sale", async function () {
-    const startTime = ts - 100n;
-    const endTime = startTime + 10n;
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 3600;
 
-    // Attempt to initialize the sale from a non-owner account
-    refModule.getAddress()
-    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, 51, hre.ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress())).to.be.revertedWithCustomError;
+    await expect(sale.connect(depositor1).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress())).to.be.revertedWithCustomError(sale, customError.OwnableUnauthorizedAccount);
   });
 
   it("should calculate the correct price per token dynamically", async function () {
-    const tokensForSale = hre.ethers.parseEther("1000");
-    const softCap = hre.ethers.parseEther("10"); // Soft cap reached at 10 ETH
-    const startTime = await getBlockTime();;
-    const endTime = startTime + 3600n;
+    const tokensForSale = ethers.parseEther("1000");
+    const softCap = ethers.parseEther("10");
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(
-      startTime,
-      endTime,
-      51,
-      tokensForSale,
-      softCap,
-      softCap,
-      softCap * 10n,
-      params.minLock,
-      refModule.getAddress()
-    );
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, tokensForSale, softCap, softCap, softCap * 10n, params.minLock, refModule.getAddress());
 
     const priceAtSoftCap = await sale.getPrice();
     expect(priceAtSoftCap).to.equal(tokensForSale / softCap);
 
-    // Simulate purchases to exceed soft cap
-    const overSoftCap = softCap + (hre.ethers.parseEther("15"));
+    const overSoftCap = softCap + (ethers.parseEther("15"));
     await sale.connect(depositor1).buyTokensWithNative("", { value: overSoftCap });
 
     const priceAfterExceedingSoftCap = await sale.getPrice();
-
     expect(priceAfterExceedingSoftCap).to.equal(tokensForSale / (overSoftCap));
   });
 
   it("should reject purchases below the minimum amount", async function () {
-    const startTime = await getBlockTime();;
-    const endTime = startTime + 3600n;
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 3600;
 
-    const minPurchase = hre.ethers.parseEther("0.01")
+    const minPurchase = ethers.parseEther("0.01")
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, minPurchase, minPurchase * 10n, params.minLock, refModule.getAddress());
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, hre.ethers.parseEther("1000"), params.soft, minPurchase, minPurchase * 10n, params.minLock, refModule.getAddress());
-
-    await expect(sale.connect(depositor1).buyTokensWithNative(
-      "",
-      {
-        value: hre.ethers.parseEther("0.001"),
-      })).to.be.revertedWithCustomError(sale, customError.paymentOutsideMinMaxAmounts);
+    await expect(sale.connect(depositor1).buyTokensWithNative("", { value: ethers.parseEther("0.001") })).to.be.revertedWithCustomError(sale, customError.paymentOutsideMinMaxAmounts);
   });
 
   it("should not allow purchases after sale has ended", async function () {
-    const startTime = await getBlockTime();;
-    const endTime = startTime + 360n; // Sale duration is 1 hour
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 360;
 
-    await sale.connect(saler).initializeSale(startTime, endTime, 51, hre.ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress());
-    await hre.ethers.provider.send("evm_increaseTime", [3600 * 2]); // Move time forward by 2 hours
-    await hre.ethers.provider.send("evm_mine"); // Mine the next block to ensure the time has been set
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), params.soft, params.min, params.max, params.minLock, refModule.getAddress());
+    await networkHelpers.time.increase(3600 * 2);
 
-    await expect(sale.connect(depositor1).buyTokensWithNative(
-      "", {
-      value: params.min,
-    })).to.be.revertedWithCustomError(sale, customError.outsideSaleTime);
+    await expect(sale.connect(depositor1).buyTokensWithNative("", { value: params.min })).to.be.revertedWithCustomError(sale, customError.outsideSaleTime);
   });
 
   it("should send ETH fee to the treasury on native token sale", async function () {
-    const startTime = await getBlockTime();;
-    const endTime = startTime + 3600n;
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 3600;
 
-    await sale.connect(saler).initializeSale(
-      startTime,
-      endTime,
-      51,
-      hre.ethers.parseEther("1000"),
-      1_000,
-      1_000n,
-      hre.ethers.parseEther("1000"),
-      params.minLock,
-      refModule.getAddress()
-    );
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), 1_000, 1_000n, ethers.parseEther("1000"), params.minLock, refModule.getAddress());
 
     await sale.connect(depositor1).buyTokensWithNative("", { value: 2_000n });
     await sale.connect(depositor2).buyTokensWithNative("", { value: 4_000n });
 
-    await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 3 hours forward
-    await hre.ethers.provider.send("evm_mine");
+    await networkHelpers.time.increase(3 * 3600);
 
-    const treasuryInitialEthBalance = await hre.ethers.provider.getBalance(params.treasury);
+    const treasuryInitialEthBalance = await ethers.provider.getBalance(params.treasury);
 
     await sale.connect(saler).finalizeSale({ value: params.lockerFee });
 
-    const newTreasuryEthBalance = await hre.ethers.provider.getBalance(params.treasury);
+    const newTreasuryEthBalance = await ethers.provider.getBalance(params.treasury);
     const raised = (await sale.totalRaised()) * (params.raiseFee) / (100n);
     expect(newTreasuryEthBalance - (treasuryInitialEthBalance)).to.equal(raised, "Treasury should receive the ETH fee");
   });
 
   it("should correctly handle refunds when the soft cap is not reached", async function () {
-    const startTime = await getBlockTime();;
-    const endTime = startTime + 7200n; // 2 hours sale duration
-    const depositAmount = hre.ethers.parseEther("1");
+    const startTime = (await networkHelpers.time.latest()) + 2;
+    const endTime = startTime + 7200;
+    const depositAmount = ethers.parseEther("1");
 
-    await sale.connect(saler).initializeSale(
-      startTime,
-      endTime,
-      51,
-      hre.ethers.parseEther("1000"),
-      hre.ethers.parseEther("10"), // Soft cap is 10 ETH
-      hre.ethers.parseEther("1"),
-      hre.ethers.parseEther("1"),
-      params.minLock,
-      refModule.getAddress()
-    );
+    await sale.connect(saler).initializeSale(startTime, endTime, 51, ethers.parseEther("1000"), ethers.parseEther("10"), ethers.parseEther("1"), ethers.parseEther("1"), params.minLock, refModule.getAddress());
     await sale.connect(depositor1).buyTokensWithNative("", { value: depositAmount });
 
-    // Move past end time without reaching soft cap
-    await hre.ethers.provider.send("evm_increaseTime", [3 * 3600]); // 3 hours forward
-    await hre.ethers.provider.send("evm_mine");
+    await networkHelpers.time.increase(3 * 3600);
 
-    await expect(sale.connect(depositor1).refund()).to.changeEtherBalance(depositor1, depositAmount);
+    await expect(sale.connect(depositor1).refund()).to.changeEtherBalance(ethers, depositor1, depositAmount);
     await expect(await sale.contributions(depositor1.getAddress())).to.equal(0);
   });
 

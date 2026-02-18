@@ -1,0 +1,3 @@
+[submodule "lib/deluge-referral"]
+	path = lib/deluge-referral
+	url = https://github.com/t-V-N/deluge-referral

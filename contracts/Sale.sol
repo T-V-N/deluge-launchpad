@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./interfaces/ILocker.sol";
-import "./interfaces/IReferralModule.sol";
+import "../lib/deluge-referral/contracts/interfaces/IReferralModuleRefundable.sol";
 import "./interfaces/IUniswap.sol";
 
 contract Sale is Ownable, ReentrancyGuard {
@@ -78,7 +78,7 @@ contract Sale is Ownable, ReentrancyGuard {
     uint256 public lockPeriod;
 
     // ref
-    IReferralModule public referralModule;
+    IReferralModuleRefundable public referralModule;
     bool public referralEnabled;
     bool refshareSent;
     uint256 refSharePt = 25;
@@ -185,7 +185,7 @@ contract Sale is Ownable, ReentrancyGuard {
         salePrice = _salePrice;
 
         if (referralEnabled) {
-            referralModule = IReferralModule(_referralContract);
+            referralModule = IReferralModuleRefundable(_referralContract);
         }
 
         saleToken.transferFrom(owner(), address(this), (hardCap * salePrice) + ((((liquidityPrice * hardCap * liquidityPt) * (100 - raiseFee)) / 100) / 100));
@@ -227,7 +227,8 @@ contract Sale is Ownable, ReentrancyGuard {
         }
 
         if (referralEnabled && bytes(refCode).length != 0) {
-            referralModule.processReferralCode(refCode, (((_amount * raiseFee) / 100) * refSharePt) / 100);
+            address refToken = acceptsNativeToken ? address(0) : address(paymentToken);
+            referralModule.processReferralCode(refCode, (((_amount * raiseFee) / 100) * refSharePt) / 100, refToken);
         }
 
         totalRaised += _amount;
@@ -242,9 +243,9 @@ contract Sale is Ownable, ReentrancyGuard {
         }
 
         if (acceptsNativeToken) {
-            referralModule.finalizeReferralCodes{value: referralModule.getRefshareBalanceFor(count)}(count);
+            referralModule.finalizeReferralCodes{value: referralModule.getRefshareBalanceFor(count, address(0))}(count);
         } else {
-            paymentToken.approve(address(referralModule), referralModule.getRefshareBalanceFor(count));
+            paymentToken.approve(address(referralModule), referralModule.getRefshareBalanceFor(count, address(paymentToken)));
             referralModule.finalizeReferralCodes(count);
         }
     }
@@ -381,4 +382,6 @@ contract Sale is Ownable, ReentrancyGuard {
     function setWhitelist(bool _enabled) external onlyOwner {
         isWhitelist = _enabled;
     }
+
+    receive() external payable {}
 }

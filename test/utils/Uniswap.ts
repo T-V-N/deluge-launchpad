@@ -1,16 +1,17 @@
 import { BaseContract, ContractFactory } from "ethers";
-import { abi as abiWeth, bytecode as bytecodeWeth } from "@uniswap/v2-periphery/build/WETH9.json";
-import { abi as abiFactory, bytecode as bytecodeFactory } from "@uniswap/v2-core/build/UniswapV2Factory.json";
-import {
-  abi as abiRouter,
-  bytecode as bytecodeRouter,
-} from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
-import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import abiWethJson from "@uniswap/v2-periphery/build/WETH9.json" with { type: "json" };
+import abiFactoryJson from "@uniswap/v2-core/build/UniswapV2Factory.json" with { type: "json" };
+import abiRouterJson from "@uniswap/v2-periphery/build/UniswapV2Router02.json" with { type: "json" };
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/types";
 
-import IUniswapV2ERC20 from "@uniswap/v2-core/build/IUniswapV2ERC20.json";
-import IUniswapV2Factory from "@uniswap/v2-core/build/IUniswapV2Factory.json";
-import IUniswapV2Pair from "@uniswap/v2-core/build/IUniswapV2Pair.json";
-import IUniswapV2Router02 from "@uniswap/v2-periphery/build/IUniswapV2Router02.json";
+import IUniswapV2ERC20 from "@uniswap/v2-core/build/IUniswapV2ERC20.json" with { type: "json" };
+import IUniswapV2Factory from "@uniswap/v2-core/build/IUniswapV2Factory.json" with { type: "json" };
+import IUniswapV2Pair from "@uniswap/v2-core/build/IUniswapV2Pair.json" with { type: "json" };
+import IUniswapV2Router02 from "@uniswap/v2-periphery/build/IUniswapV2Router02.json" with { type: "json" };
+
+const { abi: abiWeth, bytecode: bytecodeWeth } = abiWethJson;
+const { abi: abiFactory, bytecode: bytecodeFactory } = abiFactoryJson;
+const { abi: abiRouter, bytecode: bytecodeRouter } = abiRouterJson;
 
 export interface InterfaceType {
   [name: string]: { abi: any; bytecode: any };
@@ -23,7 +24,7 @@ const Interface: InterfaceType = {
   IUniswapV2Router02,
 };
 
-async function deployWETH9(signer: SignerWithAddress) {
+async function deployWETH9(signer: HardhatEthersSigner) {
   const WETH9 = new ContractFactory(abiWeth, bytecodeWeth, signer);
   const weth9 = await WETH9.deploy();
   await weth9.deploymentTransaction()?.wait();
@@ -31,8 +32,8 @@ async function deployWETH9(signer: SignerWithAddress) {
 }
 
 async function deployFactory(
-  signer: SignerWithAddress,
-  feeToSetter: SignerWithAddress
+  signer: HardhatEthersSigner,
+  feeToSetter: HardhatEthersSigner,
 ) {
   const Factory = new ContractFactory(abiFactory, bytecodeFactory, signer);
   const factory = await Factory.deploy(feeToSetter.address);
@@ -41,19 +42,22 @@ async function deployFactory(
 }
 
 async function deployRouter(
-  signer: SignerWithAddress,
+  signer: HardhatEthersSigner,
   factory: BaseContract,
-  weth9: BaseContract
+  weth9: BaseContract,
 ) {
   const Router = new ContractFactory(abiRouter, bytecodeRouter, signer);
-  const router = await Router.deploy(await factory.getAddress(), await weth9.getAddress());
+  const router = await Router.deploy(
+    await factory.getAddress(),
+    await weth9.getAddress(),
+  );
   await router.deploymentTransaction()?.wait();
   return { router, Router };
 }
 
 export class UniswapV2Deployer {
   public Interface = Interface;
-  public async deploy(signer: SignerWithAddress) {
+  public async deploy(signer: HardhatEthersSigner) {
     const { factory, Factory } = await deployFactory(signer, signer);
     const uniFactory = factory;
     const UniFactory = Factory;
