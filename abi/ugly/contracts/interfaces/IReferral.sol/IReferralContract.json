@@ -1,0 +1,92 @@
+[
+  {
+    "type": "function",
+    "name": "addRegisteredFunds",
+    "constant": false,
+    "payable": false,
+    "inputs": [
+      {
+        "type": "string",
+        "name": "code"
+      },
+      {
+        "type": "uint256",
+        "name": "amountNative"
+      },
+      {
+        "type": "uint256",
+        "name": "amountUSDT"
+      },
+      {
+        "type": "uint256",
+        "name": "amountUSDC"
+      },
+      {
+        "type": "uint256",
+        "name": "amountDAI"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "codeExist",
+    "constant": true,
+    "stateMutability": "view",
+    "payable": false,
+    "inputs": [
+      {
+        "type": "string",
+        "name": "code"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "bool"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "removeRegisteredFunds",
+    "constant": false,
+    "payable": false,
+    "inputs": [
+      {
+        "type": "string",
+        "name": "code"
+      },
+      {
+        "type": "uint256",
+        "name": "amountNative"
+      },
+      {
+        "type": "uint256",
+        "name": "amountUSDT"
+      },
+      {
+        "type": "uint256",
+        "name": "amountUSDC"
+      },
+      {
+        "type": "uint256",
+        "name": "amountDAI"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "unlockRegisteredFunds",
+    "constant": false,
+    "stateMutability": "payable",
+    "payable": true,
+    "inputs": [
+      {
+        "type": "string",
+        "name": "code"
+      }
+    ],
+    "outputs": []
+  }
+]

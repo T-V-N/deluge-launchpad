@@ -1,0 +1,6 @@
+[
+  "function addRegisteredFunds(string,uint256,uint256,uint256,uint256)",
+  "function codeExist(string) view returns (bool)",
+  "function removeRegisteredFunds(string,uint256,uint256,uint256,uint256)",
+  "function unlockRegisteredFunds(string) payable"
+]

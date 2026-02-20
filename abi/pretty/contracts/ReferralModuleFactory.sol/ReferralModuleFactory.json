@@ -1,0 +1,5 @@
+[
+  "constructor()",
+  "event ReferralModuleContractCreated(address,address)",
+  "function createReferralModule(address) payable returns (address)"
+]

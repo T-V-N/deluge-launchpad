@@ -1,0 +1,6 @@
+[
+  "function WETH() pure returns (address)",
+  "function addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256) returns (uint256, uint256, uint256)",
+  "function addLiquidityETH(address,uint256,uint256,uint256,address,uint256) payable returns (uint256, uint256, uint256)",
+  "function factory() pure returns (address)"
+]

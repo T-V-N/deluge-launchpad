@@ -1,0 +1,43 @@
+[
+  {
+    "type": "constructor",
+    "payable": false,
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "anonymous": false,
+    "name": "ReferralModuleContractCreated",
+    "inputs": [
+      {
+        "type": "address",
+        "name": "ModuleAddress",
+        "indexed": false
+      },
+      {
+        "type": "address",
+        "name": "Creator",
+        "indexed": false
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "createReferralModule",
+    "constant": false,
+    "stateMutability": "payable",
+    "payable": true,
+    "inputs": [
+      {
+        "type": "address",
+        "name": "_referralContract"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "address",
+        "name": "sale"
+      }
+    ]
+  }
+]

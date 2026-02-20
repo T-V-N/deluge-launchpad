@@ -1,0 +1,12 @@
+[
+  "constructor()",
+  "event lpLocked(address indexed,uint256,uint256,address indexed,uint256 indexed)",
+  "event lpWithdrawn(address indexed,uint256,address indexed,uint256 indexed)",
+  "function changeFee(uint256)",
+  "function changefeeaddress(address)",
+  "function lockTokens(address,uint256,uint256,address) payable returns (uint256)",
+  "function locks(uint256) view returns (address, address, uint256, uint256, uint256, bool)",
+  "function ownerLocks(address,uint256) view returns (uint256)",
+  "function tokenLocks(address,uint256) view returns (uint256)",
+  "function withdrawLP(uint256)"
+]

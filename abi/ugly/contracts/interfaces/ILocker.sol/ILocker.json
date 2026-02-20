@@ -1,0 +1,33 @@
+[
+  {
+    "type": "function",
+    "name": "lockTokens",
+    "constant": false,
+    "stateMutability": "payable",
+    "payable": true,
+    "inputs": [
+      {
+        "type": "address",
+        "name": "token"
+      },
+      {
+        "type": "uint256",
+        "name": "amount"
+      },
+      {
+        "type": "uint256",
+        "name": "locktime"
+      },
+      {
+        "type": "address",
+        "name": "_owner"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint256",
+        "name": "_lockNumber"
+      }
+    ]
+  }
+]

@@ -59,4 +59,17 @@ export default defineConfig({
       apiKey: BSC_SCAN_API_KEY,
     },
   },
+
+  abiExporter: [
+    {
+      runOnCompile: true,
+      path: "./abi/pretty",
+      pretty: true,
+    },
+    {
+      runOnCompile: true,
+      path: "./abi/ugly",
+      pretty: false,
+    },
+  ],
 });

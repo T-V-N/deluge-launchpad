@@ -1,0 +1,129 @@
+[
+  {
+    "type": "function",
+    "name": "WETH",
+    "constant": true,
+    "stateMutability": "pure",
+    "payable": false,
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "address"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "addLiquidity",
+    "constant": false,
+    "payable": false,
+    "inputs": [
+      {
+        "type": "address",
+        "name": "tokenA"
+      },
+      {
+        "type": "address",
+        "name": "tokenB"
+      },
+      {
+        "type": "uint256",
+        "name": "amountADesired"
+      },
+      {
+        "type": "uint256",
+        "name": "amountBDesired"
+      },
+      {
+        "type": "uint256",
+        "name": "amountAMin"
+      },
+      {
+        "type": "uint256",
+        "name": "amountBMin"
+      },
+      {
+        "type": "address",
+        "name": "to"
+      },
+      {
+        "type": "uint256",
+        "name": "deadline"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint256",
+        "name": "amountA"
+      },
+      {
+        "type": "uint256",
+        "name": "amountB"
+      },
+      {
+        "type": "uint256",
+        "name": "liquidity"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "addLiquidityETH",
+    "constant": false,
+    "stateMutability": "payable",
+    "payable": true,
+    "inputs": [
+      {
+        "type": "address",
+        "name": "token"
+      },
+      {
+        "type": "uint256",
+        "name": "amountTokenDesired"
+      },
+      {
+        "type": "uint256",
+        "name": "amountTokenMin"
+      },
+      {
+        "type": "uint256",
+        "name": "amountETHMin"
+      },
+      {
+        "type": "address",
+        "name": "to"
+      },
+      {
+        "type": "uint256",
+        "name": "deadline"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint256",
+        "name": "amountToken"
+      },
+      {
+        "type": "uint256",
+        "name": "amountETH"
+      },
+      {
+        "type": "uint256",
+        "name": "liquidity"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "factory",
+    "constant": true,
+    "stateMutability": "pure",
+    "payable": false,
+    "inputs": [],
+    "outputs": [
+      {
+        "type": "address"
+      }
+    ]
+  }
+]

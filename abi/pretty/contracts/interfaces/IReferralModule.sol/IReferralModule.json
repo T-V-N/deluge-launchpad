@@ -1,0 +1,9 @@
+[
+  "function finalizeReferralCodes(uint256) payable",
+  "function getRefContract() view returns (address)",
+  "function getRefshareBalance() view returns (uint256)",
+  "function getRefshareBalanceFor(uint256) view returns (uint256)",
+  "function init(address)",
+  "function isFinalized() view returns (bool)",
+  "function processReferralCode(string,uint256)"
+]

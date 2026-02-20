@@ -1,0 +1,55 @@
+[
+  {
+    "type": "function",
+    "name": "initialize",
+    "constant": false,
+    "payable": false,
+    "inputs": [
+      {
+        "type": "address",
+        "name": "_tokenAddress"
+      },
+      {
+        "type": "uint256",
+        "name": "_start"
+      },
+      {
+        "type": "uint256",
+        "name": "_end"
+      },
+      {
+        "type": "uint256",
+        "name": "_lockupPeriod"
+      },
+      {
+        "type": "uint256",
+        "name": "_preSaleTokenAmount"
+      },
+      {
+        "type": "uint256",
+        "name": "_liquidityPt"
+      },
+      {
+        "type": "uint256",
+        "name": "_minPurchase"
+      },
+      {
+        "type": "uint256",
+        "name": "_maxPurchase"
+      },
+      {
+        "type": "uint256",
+        "name": "_softCap"
+      },
+      {
+        "type": "uint256",
+        "name": "_hardCap"
+      },
+      {
+        "type": "address[]",
+        "name": "_whitelist"
+      }
+    ],
+    "outputs": []
+  }
+]

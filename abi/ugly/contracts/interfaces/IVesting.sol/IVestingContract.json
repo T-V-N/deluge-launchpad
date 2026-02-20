@@ -1,0 +1,35 @@
+[
+  {
+    "type": "function",
+    "name": "initialize",
+    "constant": false,
+    "payable": false,
+    "inputs": [
+      {
+        "type": "address",
+        "name": "_erc20Token"
+      },
+      {
+        "type": "uint32",
+        "name": "_startDate"
+      },
+      {
+        "type": "uint32",
+        "name": "_cliffPeriod"
+      },
+      {
+        "type": "uint256",
+        "name": "_firstUnlockPercent"
+      },
+      {
+        "type": "uint32",
+        "name": "_unlockPeriod"
+      },
+      {
+        "type": "uint256",
+        "name": "_unlockPeriodPercent"
+      }
+    ],
+    "outputs": []
+  }
+]

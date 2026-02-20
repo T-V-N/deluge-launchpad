@@ -1,0 +1,214 @@
+[
+  {
+    "type": "constructor",
+    "payable": false,
+    "inputs": []
+  },
+  {
+    "type": "event",
+    "anonymous": false,
+    "name": "lpLocked",
+    "inputs": [
+      {
+        "type": "address",
+        "name": "tokenaddress",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "amount",
+        "indexed": false
+      },
+      {
+        "type": "uint256",
+        "name": "unlocktime",
+        "indexed": false
+      },
+      {
+        "type": "address",
+        "name": "owner",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "locknumber",
+        "indexed": true
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "anonymous": false,
+    "name": "lpWithdrawn",
+    "inputs": [
+      {
+        "type": "address",
+        "name": "tokenaddress",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "amount",
+        "indexed": false
+      },
+      {
+        "type": "address",
+        "name": "owner",
+        "indexed": true
+      },
+      {
+        "type": "uint256",
+        "name": "locknumber",
+        "indexed": true
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "changeFee",
+    "constant": false,
+    "payable": false,
+    "inputs": [
+      {
+        "type": "uint256",
+        "name": "newFee"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "changefeeaddress",
+    "constant": false,
+    "payable": false,
+    "inputs": [
+      {
+        "type": "address",
+        "name": "newaddress"
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "type": "function",
+    "name": "lockTokens",
+    "constant": false,
+    "stateMutability": "payable",
+    "payable": true,
+    "inputs": [
+      {
+        "type": "address",
+        "name": "token"
+      },
+      {
+        "type": "uint256",
+        "name": "amount"
+      },
+      {
+        "type": "uint256",
+        "name": "locktime"
+      },
+      {
+        "type": "address",
+        "name": "_owner"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint256",
+        "name": "_lockNumber"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "locks",
+    "constant": true,
+    "stateMutability": "view",
+    "payable": false,
+    "inputs": [
+      {
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "address",
+        "name": "lockowner"
+      },
+      {
+        "type": "address",
+        "name": "lpaddress"
+      },
+      {
+        "type": "uint256",
+        "name": "unlockdate"
+      },
+      {
+        "type": "uint256",
+        "name": "lockamount"
+      },
+      {
+        "type": "uint256",
+        "name": "lockid"
+      },
+      {
+        "type": "bool",
+        "name": "withdrawn"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "ownerLocks",
+    "constant": true,
+    "stateMutability": "view",
+    "payable": false,
+    "inputs": [
+      {
+        "type": "address"
+      },
+      {
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "tokenLocks",
+    "constant": true,
+    "stateMutability": "view",
+    "payable": false,
+    "inputs": [
+      {
+        "type": "address"
+      },
+      {
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "type": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "function",
+    "name": "withdrawLP",
+    "constant": false,
+    "payable": false,
+    "inputs": [
+      {
+        "type": "uint256",
+        "name": "lockNumber"
+      }
+    ],
+    "outputs": []
+  }
+]

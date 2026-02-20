@@ -1,0 +1,3 @@
+[
+  "function lockTokens(address,uint256,uint256,address) payable returns (uint256)"
+]
