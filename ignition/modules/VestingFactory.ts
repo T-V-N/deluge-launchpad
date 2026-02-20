@@ -1,12 +1,12 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-import { params } from "../../utils/common";
 
-const VestingFactory = buildModule("VestingFactory", (m) => {
-  const deployer = m.getAccount(0);
+const VestingFactoryModule = buildModule("VestingFactory", (m) => {
+  const treasury = m.getParameter("treasury");
+  const vestingFee = m.getParameter("vestingFee", 100n);
 
-  const factory = m.contract("VestingContractFactory", [params.treasury, params.fee], { from: deployer });
+  const factory = m.contract("VestingContractFactory", [treasury, vestingFee]);
 
   return { factory };
 });
 
-export default VestingFactory;
+export default VestingFactoryModule;

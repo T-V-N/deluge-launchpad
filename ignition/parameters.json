@@ -1,0 +1,14 @@
+{
+  "$global": {
+    "treasury": "0x1CBd3b2770909D4e10f157cABC84C7264073C9Ec",
+    "saleFee": "100n",
+    "raiseFee": "8n"
+  },
+  "Referral": {
+    "paymentTokenAddress": "0x55d398326f99059fF775485246999027B3197955",
+    "referralFee": "8n"
+  },
+  "VestingFactory": {
+    "vestingFee": "100n"
+  }
+}
